@@ -2,6 +2,7 @@
 A small barcode scanning and generation C library with Java bindings.
 
 ## Roadmap
-- Barcode generation from a 12-digit number (string)
+- Support Code 128 (ASCII only)
+- Barcode generation from a 20-digit number (string)
 - Generating a vector representation of a barcode
-- 12-digit number generation from a barcode
+- 20-digit number generation from a barcode
