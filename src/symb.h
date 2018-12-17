@@ -131,7 +131,6 @@ int init_barcode(void);
 int code_c_digit(uchar, uchar, int*);
 
 int c128_checksum(int*, int, int*);
-int c128_pattern_length(uchar*, int, int*);
 int c128_encode(uchar*, int, Code128**);
 
 #endif /* SYMB_H */
