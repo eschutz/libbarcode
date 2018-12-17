@@ -1,40 +1,42 @@
 /**
-*     @file symb.h
-*     @brief symb.h contains symbology and relevant function definitions.
-*     @author Elijah Schutz
-*     @date 12/12/18
-*/
+ *     @file symb.h
+ *     @brief symb.h contains symbology and relevant function definitions.
+ *     @author Elijah Schutz
+ *     @date 12/12/18
+ */
 
 #ifndef SYMB_H
 #define SYMB_H
 
+// clang-format off
+
 #ifndef NUL
     #define NUL '\0'
 #endif
-#define SOH      1
-#define STX      2
-#define ETX      3
-#define EOT      4
-#define ENQ      5
-#define ACK      6
-#define SO       14
-#define SI       15
-#define DLE      16
-#define DC1      17
-#define DC2      18
-#define DC3      19
-#define DC4      20
-#define NAK      21
-#define SYN      22
-#define ETB      23
-#define CAN      24
-#define EM       25
-#define SUB      26
-#define FS       28
-#define GS       29
-#define RS       30
-#define US       31
-#define DEL      127
+#define SOH 1
+#define STX 2
+#define ETX 3
+#define EOT 4
+#define ENQ 5
+#define ACK 6
+#define SO  14
+#define SI  15
+#define DLE 16
+#define DC1 17
+#define DC2 18
+#define DC3 19
+#define DC4 20
+#define NAK 21
+#define SYN 22
+#define ETB 23
+#define CAN 24
+#define EM  25
+#define SUB 26
+#define FS  28
+#define GS  29
+#define RS  30
+#define US  31
+#define DEL 127
 
 #define C128_CODE_SIZE 103
 
@@ -55,31 +57,28 @@
 #define C128_B_VALUE(c) (c - 32)
 #define C128_C_VALUE(c) (c)
 
-#define START_A  0b11010000100
-#define START_B  0b11010010000
-#define START_C  0b11010011100
-#define STOP     0b11000111010
-#define RSTOP    0b11010111000
-#define STOPPT   0b1100011101011
+#define START_A 0b11010000100
+#define START_B 0b11010010000
+#define START_C 0b11010011100
+#define STOP    0b11000111010
+#define RSTOP   0b11010111000
+#define STOPPT  0b1100011101011
+
+// clang-format on
 
 #define DEFAULT_CODESET B
-#define DEFAULT_SWITCH(c) (##c CodeB)
+#define DEFAULT_SWITCH(c) c##CodeB
 
 // uchar to indicate we're still working with chars, not uint8
-typedef unsigned char uchar;
-typedef unsigned short pattern;
+typedef unsigned char          uchar;
+typedef unsigned short         pattern;
 typedef struct Code128_Barcode Code128;
-typedef enum Code128CodeSet Code128CodeSet;
-typedef enum Code128Ctrl_A Code128Ctrl_A;
-typedef enum Code128Ctrl_B Code128Ctrl_B;
-typedef enum Code128Ctrl_C Code128Ctrl_C;
+typedef enum Code128CodeSet    Code128CodeSet;
+typedef enum Code128Ctrl_A     Code128Ctrl_A;
+typedef enum Code128Ctrl_B     Code128Ctrl_B;
+typedef enum Code128Ctrl_C     Code128Ctrl_C;
 
-enum Code128CodeSet {
-    A,
-    B,
-    C,
-    Invalid
-};
+enum Code128CodeSet { A, B, C, Invalid };
 
 enum Code128Ctrl_A {
     AFNC1   = 102,
@@ -89,7 +88,7 @@ enum Code128Ctrl_A {
     AShiftB = 98,
     ACodeB  = 100,
     ACodeC  = 99,
-    StartA = 103,
+    StartA  = 103,
     AStop   = 106
 };
 
@@ -98,21 +97,15 @@ enum Code128Ctrl_B {
     BFNC1   = 134,
     BFNC2   = 129,
     BFNC3   = 128,
-    BFNC4   = 132,  // Unused
+    BFNC4   = 132, // Unused
     BShiftA = 130,
     BCodeA  = 133,
     BCodeC  = 131,
-    StartB = 136,
+    StartB  = 136,
     BStop   = 138
 };
 
-enum Code128Ctrl_C {
-    CFNC1   = 102,
-    CCodeA  = 101,
-    CCodeB  = 100,
-    StartC = 105,
-    CStop   = 106
-};
+enum Code128Ctrl_C { CFNC1 = 102, CCodeA = 101, CCodeB = 100, StartC = 105, CStop = 106 };
 
 struct Code128_Barcode {
     int     length;
@@ -120,17 +113,16 @@ struct Code128_Barcode {
 };
 
 const pattern C128_CODE[C128_CODE_SIZE];
-uchar C128_CODE_INVERSE[512];
-const uchar C128_A[C128_CODE_SIZE];
-const int C128_A_INVERSE[103];
-const uchar C128_B[C128_CODE_SIZE];
-const int C128_B_INVERSE[C128_CODE_SIZE];
+uchar         C128_CODE_INVERSE[512];
+const uchar   C128_A[C128_CODE_SIZE];
+const int     C128_A_INVERSE[103];
+const uchar   C128_B[C128_CODE_SIZE];
 
 int init_barcode(void);
 
-int code_c_digit(uchar, uchar, int*);
+int code_c_digit(uchar, uchar, int *);
 
-int c128_checksum(int*, int, int*);
-int c128_encode(uchar*, int, Code128**);
+int c128_checksum(int *, int, int *);
+int c128_encode(uchar *, int, Code128 **);
 
 #endif /* SYMB_H */

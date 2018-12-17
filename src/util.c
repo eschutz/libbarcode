@@ -1,17 +1,17 @@
 /*
-* @file       util.c
-* @brief      Assignments of definitions from util.h.
-* @author     Elijah Schutz
-* @date       12/12/18
-*/
+ * @file       util.c
+ * @brief      Assignments of definitions from util.h.
+ * @author     Elijah Schutz
+ * @date       12/12/18
+ */
 
-#include <stdlib.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include "util.h"
 #include "errors.h"
+#include "util.h"
 
 // Linear search
 int indexof(char *arr, int len, char elem) {
@@ -23,7 +23,7 @@ int indexof(char *arr, int len, char elem) {
     return -1;
 }
 
-bool isdigits(char* str, int len) {
+bool isdigits(char *str, int len) {
     for (int i = 0; i < len; i++) {
         if (!isdigit(str[i])) {
             return false;
@@ -32,7 +32,7 @@ bool isdigits(char* str, int len) {
     return true;
 }
 
-char * slice(char *str, int start, int len) {
+char *slice(char *str, int start, int len) {
 
     char *res = malloc(len);
     VERIFY_NULL(res, len);
