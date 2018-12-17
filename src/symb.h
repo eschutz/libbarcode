@@ -63,6 +63,7 @@
 #define STOPPT   0b1100011101011
 
 #define DEFAULT_CODESET B
+#define DEFAULT_SWITCH(c) (##c CodeB)
 
 // uchar to indicate we're still working with chars, not uint8
 typedef unsigned char uchar;
@@ -119,7 +120,7 @@ struct Code128_Barcode {
 };
 
 const pattern C128_CODE[C128_CODE_SIZE];
-const uchar C128_CODE_INVERSE[512];
+uchar C128_CODE_INVERSE[512];
 const uchar C128_A[C128_CODE_SIZE];
 const int C128_A_INVERSE[103];
 const uchar C128_B[C128_CODE_SIZE];
@@ -129,7 +130,7 @@ int init_barcode(void);
 
 int code_c_digit(uchar, uchar, int*);
 
-int c128_checksum(pattern*, int, int*);
+int c128_checksum(int*, int, int*);
 int c128_pattern_length(uchar*, int, int*);
 int c128_encode(uchar*, int, Code128**);
 

@@ -26,7 +26,7 @@
             fprintf(                                                                            \
                 stderr,                                                                         \
                 "null pointer: could not allocate %d bytes for variable \"%s\" at %s:%d in %s", \
-                n,                                                                              \
+                (int) n,                                                                        \
                 #var,                                                                           \
                 __FILE__,                                                                       \
                 __LINE__ - 8,                                       /* 8 lines up until there */\
