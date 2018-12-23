@@ -2,8 +2,9 @@
 #include <string.h>
 
 #include "symb.h"
+#include "graphic.h"
 
-char _str[] = "12345678";
+char _str[] = "abc123HELLO";
 
 int main(void) {
     init_barcode();
@@ -12,9 +13,11 @@ int main(void) {
     memcpy(str, _str, _len); // Remove null terminator
     Code128 *result;
     int status = c128_encode((uchar *)str, _len, &result);
-    printf("Status: %d\n", status);
-    for (int i = 0; i < result->length; i++) {
-        printf("0x%x ", result->data[i]);
-    }
-    printf("\n");
+    // for (int i = 0; i < result->length; i++) {
+    //     printf("0x%x ", result->data[i]);
+    // }
+
+    char *svg;
+    c128_svg(result, &svg);
+    printf("%s\n", svg);
 }
