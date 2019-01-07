@@ -22,7 +22,7 @@ After completion, the aim is to produce a Windows desktop application, and a
 simple barcode scanning app for Android.
 
 ## Usage
-**Note:** Compiled with Clang via GNU Make on Mac OSX, and Visual C++ Compiler on Windows.
+**Note:** Compiled with GNU Make using Clang on Mac OSX, and Borland C++ 5.5 on Windows.
 
 Include the `symb.h` and `graphic.h` headers and initialise with `init_barcode()` before doing any of the following.
 

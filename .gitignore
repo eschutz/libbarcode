@@ -6,3 +6,4 @@ main
 main.exe
 main.tds
 build/*
+doc/*
