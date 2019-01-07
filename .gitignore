@@ -6,4 +6,6 @@ main
 main.exe
 main.tds
 build/*
+!build/.gitkeep
 doc/*
+!doc/.gitkeep
