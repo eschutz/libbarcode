@@ -32,6 +32,11 @@
 #include "symb.h"
 #include "util.h"
 
+const char ctrl_strrepr[32][C128_MAX_STRREPR_SIZE] = {
+    "\\0", "^A",  "^B",  "^C", "^D", "^E",  "^F",  "\\a", "\\b", "\\t", "\\n",
+    "\\v", "\\f", "\\r", "^N", "^O", "^P",  "^Q",  "^R",  "^S",  "^T",  "^U",
+    "^V",  "^W",  "^X",  "^Y", "^Z", "\\e", "^\\", "^]",  "^^",  "^_"};
+
 const pattern C128_CODE[] = {
     0b101100110, 0b100110110, 0b100110011, 0b001001100, 0b001000110, 0b000100110, 0b001100100,
     0b001100010, 0b000110010, 0b100100100, 0b100100010, 0b100010010, 0b011001110, 0b001101110,
@@ -52,9 +57,9 @@ const pattern C128_CODE[] = {
 /**
  *      @detail Each pattern is represented by a 9-bit binary literal, meaning the theoretical
  *              numerical value of each pattern lies in the range [0, 511). An array of 512 uchars
- * is used to map the numerical value of the pattern to the Code 128 value. In init_barcode() all
- *              values are initialised to NUL – of the 103 patterns, there is no empty pattern so
- * NUL values should be checked for when using C128_CODE_INVERSE.
+ *              is used to map the numerical value of the pattern to the Code 128 value. In
+ *              init_barcode() all values are initialised to NUL – of the 103 patterns, there is no
+ *              empty pattern so NUL values should be checked for when using C128_CODE_INVERSE.
  */
 uchar C128_CODE_INVERSE[512];
 
@@ -94,9 +99,10 @@ int init_barcode(void) {
     }
     initialised = true;
     // Sets all empty values to 0
-    for (int i = 0; i < 512; i++) {
-        C128_CODE_INVERSE[i] = NUL;
-    }
+    memset(C128_CODE_INVERSE, 0, sizeof C128_CODE_INVERSE);
+    // for (int i = 0; i < 512; i++) {
+    //     C128_CODE_INVERSE[i] = NUL;
+    // }
     /**
      * Uses the Code 128 value (C128_CODE[i]) as the index of C128_CODE_INVERSE, and the index (i)
      * as the value, to produce an inverse mapping.
@@ -109,9 +115,42 @@ int init_barcode(void) {
 }
 
 /**
- *       @detail Uses atoi() to convert two digits into a Code 128C values. Code C has a one-to-one
- *               digit-to-value mapping. Passing the two digits in "57" to the function will result
- *               in 57, and passing "06" to the function will result in 6.
+ *      @detail Iterates through @c data to replacing every instance of a control character with its
+ *              its string representation supplied by ctrl_strrepr and DEL_STRREPR.
+ *      @see ctrl_strrepr
+ *      @see DEL_STRREPR
+ */
+int c128_strrepr(uchar *data, int data_len, char **dest) {
+    if (data_len > C128_MAX_DATA_LEN) {
+        fprintf(stderr, "data length exceeds maximum of %d\n", C128_MAX_DATA_LEN);
+        return ERR_DATA_LENGTH;
+    }
+
+    *dest = calloc(1, C128_MAX_STRREPR_SIZE);
+    VERIFY_NULL(*dest, C128_MAX_STRREPR_SIZE);
+
+    for (int i = 0; i < data_len; i++) {
+        char c = (char)data[i];
+        if (IS_CTRL(c)) {
+            if (DEL == c) {
+                strncat(*dest, DEL_STRREPR, CTRL_STR_SIZE);
+            } else {
+                strncat(*dest, ctrl_strrepr[(int)c], CTRL_STR_SIZE);
+            }
+        } else {
+            char str[2];
+            str[0] = c;
+            str[1] = '\0';
+            strncat(*dest, str, 1);
+        }
+    }
+    return SUCCESS;
+}
+
+/**
+ *      @detail Uses atoi() to convert two digits into a Code 128C values. Code C has a one-to-one
+ *              digit-to-value mapping. Passing the two digits in "57" to the function will result
+ *              in 57, and passing "06" to the function will result in 6.
  */
 int c128_c_digit(uchar d0, uchar d1, int *dest) {
     char dd[3] = {d0, d1, '\0'};
@@ -122,6 +161,23 @@ int c128_c_digit(uchar d0, uchar d1, int *dest) {
         return ERR_ARGUMENT;
     }
     return SUCCESS;
+}
+
+/**
+ *      @detail Code 128 C is only used on a string if it is even-lengthed and is made up completely
+ *              of digits. use_c128_dgt() utilises slice() and isdigits() defined in util.h to
+ *              achieve this.
+ */
+bool use_c128_dgt(char *str, int idx, int len) {
+    if (len % 2 != 0) {
+        return false;
+    }
+    char *substr = slice(str, idx, len);
+
+    bool res = isdigits(substr, len) ? true : false;
+
+    free(substr);
+    return res;
 }
 
 /**
@@ -136,12 +192,12 @@ int c128_c_digit(uchar d0, uchar d1, int *dest) {
 int c128_checksum(int *values, int val_len, int *dest) {
     // Algorithm:
     // Add the start value to the sum of the encoded values multiplied by their
-    // index The checksum is this sum modulo 103
+    // index The checksum is this sum modulo the length of Code 128 codes (103)
     *dest = values[0]; // Start value
     for (int i = 1; i < val_len; i++) {
         *dest += values[i] * i;
     }
-    *dest %= 103;
+    *dest %= C128_CODE_SIZE;
     return SUCCESS;
 }
 
@@ -171,7 +227,7 @@ int c128_encode(uchar *data, int data_len, Code128 **dest) {
     int *  values      = malloc(values_size);
     VERIFY_NULL(values, values_size);
 
-    // dest_pat stores the patterns of the symbols, i.e. C128_CODE[value]
+    // dest_pat stores the patterns of the symbols, i.e. C128_CODE[values]
     size_t   dest_size = sizeof(pattern) * C128_MAX_PATTERN_SIZE;
     pattern *dest_pat  = malloc(dest_size);
     VERIFY_NULL(dest_pat, dest_size);
@@ -381,9 +437,9 @@ int c128_encode(uchar *data, int data_len, Code128 **dest) {
 
     dest_pat[pat_len - 1] = STOPPT;
 
-    size_t total_size = sizeof *dest + dest_size;
+    size_t total_size = sizeof **dest + dest_size;
 
-    *dest = malloc(total_size);
+    *dest = calloc(1, total_size);
     VERIFY_NULL(dest, total_size);
 
     (*dest)->length = pat_len;

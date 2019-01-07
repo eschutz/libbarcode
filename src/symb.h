@@ -28,6 +28,8 @@
 #ifndef SYMB_H
 #define SYMB_H
 
+#include <stdbool.h>
+
 // clang-format off
 
 /**
@@ -64,15 +66,34 @@
 /*@}*/
 
 /**
+ *      @brief Evaluates to true if @c c is an ASCII control character.
+ */
+#define IS_CTRL(c) (0 <= c && c < 32 || 127 == c)
+
+/**
+ *      @brief Length of a string representation of a control character (excludes null
+ *             terminator).
+ */
+#define CTRL_STR_SIZE 2
+
+/**
+ *      @brief String representation of ASCII delete (127).
+ *      @see ctrl_strrepr
+ */
+#define DEL_STRREPR "\\?"
+
+/**
  *      @defgroup C128Properties Code 128 property macros
  */
 /*@{*/
-#define C128_CODE_SIZE 103
+
+#define C128_CODE_SIZE        103
 #define C128_DATA_WIDTH       11
 #define C128_STOP_WIDTH       13
 #define C128_QUIET_WIDTH      10
 #define C128_MAX_DATA_LEN     20
 #define C128_MAX_PATTERN_SIZE 42
+#define C128_MAX_STRREPR_SIZE CTRL_STR_SIZE * C128_MAX_PATTERN_SIZE + 1
 /*@}*/
 
 /**
@@ -83,7 +104,7 @@
 #define IN_C128_A(x) ((0 <= x && x <= 95) || (97 <= x && x <= 106))
 #define IN_C128_B(x) (32 <= x && x <= 127)
 #define USE_C128_C_FULL(x) (x > 1 && x % 2 == 0)
-#define USE_C128_DGT(str, idx, len) (len % 2 == 0 && isdigits(slice(str, idx, len), len))
+#define USE_C128_DGT(str, idx, len) use_c128_dgt(str, idx, len)
 #define C128_C_MIN_DGT_MID 6
 #define C128_C_MIN_DGT_END 4
 
@@ -151,8 +172,20 @@ typedef enum Code128Ctrl_B Code128Ctrl_B;
 typedef enum Code128Ctrl_C Code128Ctrl_C;
 
 /**
+ *      @brief Control character string representation mapping for ASCII 0-31. Using a char as the
+ *             index will return its string representation.
+ *             For example <tt>ctrl_strrepr[(int) '\0'] == "\\0"</tt>
+ *      @see DEL_STRREPR
+ *      @see c128_strrepr
+ */
+extern const char ctrl_strrepr[32][C128_MAX_STRREPR_SIZE];
+
+/**
  *      @detail Stores the length of the barcode stored in data[], the text it represents, and the
- *              barcode representation itself.
+ *              barcode representation itself. Note that the text field is *not* a string, so a null
+ *              terminator must be appended. For a string representation of barcode data, see
+ *              c128_strrepr().
+ *      @see c128_strrepr
  */
 struct Code128_Barcode {
     int     length;
@@ -192,20 +225,20 @@ enum Code128Ctrl_C { CFNC1 = 102, CCodeA = 101, CCodeB = 100, StartC = 105, CSto
  *     @brief Value-to-pattern mapping for generating Code 128 barcodes.
  *     @see C128_CODE_INVERSE
  */
-const pattern C128_CODE[C128_CODE_SIZE];
+extern const pattern C128_CODE[C128_CODE_SIZE];
 
 /**
  *      @brief Pattern-to-value mapping for reading Code 128 barcodes. Inverse of C128_CODE.
  *      @see C128_CODE
  */
-uchar C128_CODE_INVERSE[512];
+extern uchar C128_CODE_INVERSE[512];
 
 /**
  *      @brief Value-to-character mapping for reading Code 128 barcodes in Code A.
  *      @see C128_A_INVERSE
  *      @see C128_A_VALUE
  */
-const uchar C128_A[C128_CODE_SIZE];
+extern const uchar C128_A[C128_CODE_SIZE];
 
 /**
  *      @brief Character-to-value mapping for generating Code 128 barcodes in Code A. Inverse of
@@ -213,13 +246,13 @@ const uchar C128_A[C128_CODE_SIZE];
  *      @see C128_A
  *      @see C128_A_VALUE
  */
-const int C128_A_INVERSE[103];
+extern const int C128_A_INVERSE[103];
 
 /**
  *      @brief Value-to-character mapping for reading Code 128 barcodes in Code B.
  *      @see C128_B_VALUE
  */
-const uchar C128_B[C128_CODE_SIZE];
+extern const uchar C128_B[C128_CODE_SIZE];
 
 /**
  *      @brief Necessary initialisations for barcode usage. <b>Always call before using any function
@@ -229,6 +262,15 @@ const uchar C128_B[C128_CODE_SIZE];
 int init_barcode(void);
 
 /**
+ *      @brief Generate a string representation of data as encoded by code 128.
+ *      @param data The data to be stringified.
+ *      @param data_len The length of @c data.
+ *      @param dest The destination string. Should be of size C128_MAX_STRREPR_SIZE.
+ *      @returns SUCCESS or ERR_DATA_LENGTH
+ */
+int c128_strrepr(uchar *, int, char **);
+
+/**
  *      @brief Converts two digit characters into a Code 128C value.
  *      @param digit1 First base-10 digit.
  *      @param digit2 Second base-10 digit.
@@ -236,6 +278,15 @@ int init_barcode(void);
  *      @return SUCCESS or ERR_ARGUMENT if one of the characters is not a digit.
  */
 int c128_c_digit(uchar, uchar, int *);
+
+/**
+ *      @brief Assess whether to use on a substring of digits.
+ *      @param str The full string
+ *      @param idx The index from which the substring begins
+ *      @param len The length of the substring
+ *      @return true if Code 128 should be used, false otherwise
+ */
+bool use_c128_dgt(char *str, int idx, int len);
 
 /**
  *      @brief Calculates the Code 128 checksum of the supplied values.

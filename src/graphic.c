@@ -138,11 +138,17 @@ int c128_svg(Code128 *code, char **dest) {
     svg_x += quiet_width;
 
     // Add the barcode text beneath the barcode at its centre
-    char text[SVG_TEXT_BUFSIZE];
-    c128_text((char *)code->text, svg_x / 2, &text);
-    strncat(*dest, text, SVG_TEXT_BUFSIZE);
+    char *text;
+    c128_strrepr(code->text, code->length, &text);
+
+    char svg_text[SVG_TEXT_BUFSIZE];
+    c128_text(text, svg_x / 2, &svg_text);
+
+    strncat(*dest, svg_text, SVG_TEXT_BUFSIZE);
 
     strncat(*dest, SVG_FOOTER, SVG_FOOTER_LEN);
+
+    free(text);
 
     return SUCCESS;
 }

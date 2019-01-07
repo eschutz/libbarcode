@@ -6,7 +6,7 @@ This project was started to provide specialised barcode printing and scanning
 software with an NGO dentist in Kyrgyzstan operating in partnership with
 [Interserve](https://interserve.org.au/).
 
-Its aim is to provide barcode generation from up strings up to 20-characters
+Its aim is to provide barcode generation from up strings up to 20 characters
 long, versatile barcode printing services, and decoding services.
 
 ## Roadmap

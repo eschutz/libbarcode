@@ -1,3 +1,8 @@
 .DS_Store
 old
 test.svg
+.clang-expand
+main
+main.exe
+main.tds
+build/*
