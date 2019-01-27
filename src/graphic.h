@@ -138,4 +138,15 @@ int c128_pat2svg(pattern, int, int *, char **);
  */
 int c128_svg(Code128 *, char **);
 
+/**
+ *      @brief Generates a PostScript representation of a complete Code 128 barcode.
+ *      @param code A pointer to a Code128 struct that contains the barcode to be used
+ *      @param dest A double pointer to a destination string. Use ps_bufsize() to calculate the size
+ *             of @c dest
+ *      @return SUCCESS
+ *      @see PS_BUFSIZE
+ */
+
+// int c128_pat2ps(pattern, int, char **);
+
 #endif

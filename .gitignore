@@ -9,3 +9,5 @@ build/*
 !build/.gitkeep
 doc/*
 !doc/.gitkeep
+cert
+release*
