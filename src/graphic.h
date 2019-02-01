@@ -68,12 +68,121 @@
 /*@}*/
 
 /**
+ *      @defgroup PSProperties Properties of PostScript barcode outputs
+ */
+/*@{*/
+#define PS_HEADER                                                                                  \
+    "%%!PS\n"                                                                                      \
+    "/p {0 add} def\n"                                                                             \
+    "/in {72 mul} def\n"                                                                           \
+    "/mm {in 25.4 div} def\n"                                                                      \
+    "/u {%s} def\n"                                                                                \
+    "/lmargin %0.9f u def\n"                                                                     \
+    "/rmargin %0.9f u def\n"                                                                     \
+    "/tmargin %0.9f u def\n"                                                                     \
+    "/bmargin %0.9f u def\n"                                                                      \
+    "/BAR_W %0.9f u def\n"                                                                          \
+    "/BAR_H %0.9f u def\n"                                                                          \
+    "/PAD %0.9f u def\n"\
+    "/neg {-1 mul} def\n"                                                                          \
+    "/x //lmargin def\n"                                                                           \
+    "/y //bmargin //PAD add def\n"                                                                                   \
+    "/rpos {\n"\
+    "  /y exch y add def\n"\
+    "  /x exch x add def\n"\
+    "} def\n"\
+    "/reset_x {/x //lmargin def} def\n"\
+    "/reset_y {0 //BAR_H neg rpos} def\n"\
+    "/pad_x {//PAD 0 rpos} def\n"\
+    "/pad_y {0 //PAD rpos} def\n"\
+    "/bar {\n"                                                                                     \
+    "  newpath\n"                                                                                    \
+    "  x y moveto\n"\
+    "  0 //BAR_H rlineto\n"                                                                            \
+    "  //BAR_W 0 rlineto\n"                                                                            \
+    "  0 //BAR_H neg rlineto\n"                                                                        \
+    "  closepath\n"                                                                                  \
+    "  0 setgray fill\n"                                                                                       \
+    "  /x x //BAR_W add def\n"                                                                         \
+    "} def\n"
+#define PS_HEADER_BUFSIZE 643
+#define PS_FOOTER "showpage\n"
+#define PS_FOOTER_LEN 9
+#define PS_TEXT                                                                                    \
+    "/Helvetica findfont\n"                                                                        \
+    "/fontsize %d def\n"\
+    "fontsize scalefont\n"                                                                               \
+    "setfont\n"\
+    "/str (%s) def\n"                                                                                  \
+    "newpath\n"    \
+    "x %d u sub y //PAD sub moveto\n"\
+    "str stringwidth pop 2 div neg 0 rmoveto\n"                                                                          \
+    "str show\n"                                                                                  \
+    "closepath\n"
+#define PS_UNIT "mm"
+#define PS_WIDTH 0.5 // mm
+#define PS_HEIGHT 15 // mm
+#define PS_MARGIN 6.35 // mm
+#define PS_PAD 5 // mm
+#define PS_BAR "bar\n"
+#define PS_WSPACE "/x %d //BAR_W mul x add def\n"
+#define PS_PADX "pad_x\n"
+#define PS_PADY "pad_y\n"
+#define PS_RESET_X "reset_x\n"
+#define PS_RESET_Y "reset_y\n"
+#define PS_RPOS "%0.9f u %0.9f u rpos\n"
+#define PS_CMD_BUFSIZE 38
+#define PS_FONT_SIZE 10
+#define PS_TEXT_BUFSIZE 254
+
+// #define A4_WIDTH 210
+// #define A4_HEIGHT 297
+/*@}*/
+
+typedef enum BarcodeColour Colour;
+
+typedef struct PSProperties PSProperties;
+
+typedef struct PageLayout Layout;
+
+enum BarcodeColour { White = 0, Black = 1 };
+
+struct PSProperties {
+    char units[3];
+    // float p_width;
+    // float p_height;
+    float lmargin;
+    float rmargin;
+    float tmargin;
+    float bmargin;
+    float  bar_width;
+    float  bar_height;
+    float padding;
+    int fontsize;
+};
+
+struct PageLayout {
+    int rows;
+    int cols;
+};
+
+extern const PSProperties PS_DEFAULT_PROPS;
+
+/**
  *      @brief Returns the maximum amount of memory (in bytes) needed for a barcode SVG encoding the
  *             supplied number of @c rects.
  *      @param rects The number of rectangles (bars) in the barcode
  *      @return Maximum buffer size (in bytes)
  */
 size_t svg_bufsize(int);
+
+/**
+ *      @brief Returns the maximum amount of memory (in bytes) needed for a barcode PS encoding the
+ *             supplied number of @c rects.
+ *      @param rects The number of rectangles (bars) in the barcode
+ *      @return Maximum buffer size (in bytes)
+ */
+size_t ps_bufsize(int);
 
 /**
  *      @brief Generates an SVG rectangle with the given properties.
@@ -96,6 +205,8 @@ int svg_rect(int, int, int, int, char *, char[][SVG_RECT_BUFSIZE]);
  */
 int c128_text(char *, int, char[][SVG_TEXT_BUFSIZE]);
 
+int c128_ps_text(char *, int, int, char[][PS_TEXT_BUFSIZE]);
+
 /**
  *      @brief Generates a black rectangle for Code 128 barcodes.
  *      @param x The x-coordinate of the top-left corner of the rectangle
@@ -114,6 +225,10 @@ int c128_rect_black(int, int, char[][SVG_RECT_BUFSIZE]);
  */
 int c128_rect_white(int, int, char[][SVG_RECT_BUFSIZE]);
 
+int c128_ps_rect_black(char[][PS_CMD_BUFSIZE]);
+
+int c128_ps_rect_white(int, char[][PS_CMD_BUFSIZE]);
+
 /**
  *      @brief Generates an SVG representation of a barcode pattern for Code 128 barcodes.
  *      @param pat The pattern to be represented
@@ -128,6 +243,8 @@ int c128_rect_white(int, int, char[][SVG_RECT_BUFSIZE]);
  */
 int c128_pat2svg(pattern, int, int *, char **);
 
+int c128_pat2ps(pattern, int, float *, char **, const PSProperties *);
+
 /**
  *      @brief Generates an SVG representation of a complete Code 128 barcode.
  *      @param code A pointer to a Code128 struct that contains the barcode to be used
@@ -138,15 +255,22 @@ int c128_pat2svg(pattern, int, int *, char **);
  */
 int c128_svg(Code128 *, char **);
 
+int c128_ps_init(char **, int);
+
+int c128_ps_header(char **, const PSProperties *);
+
+int c128_ps_footer(char**);
+
 /**
  *      @brief Generates a PostScript representation of a complete Code 128 barcode.
  *      @param code A pointer to a Code128 struct that contains the barcode to be used
  *      @param dest A double pointer to a destination string. Use ps_bufsize() to calculate the size
  *             of @c dest
  *      @return SUCCESS
- *      @see PS_BUFSIZE
+ *      @see ps_bufsize
  */
+int c128_ps(Code128 *, char **, const PSProperties *);
 
-// int c128_pat2ps(pattern, int, char **);
+int c128_ps_layout(Code128 **, int, char **, const PSProperties *, Layout *);
 
 #endif

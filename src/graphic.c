@@ -28,9 +28,28 @@
 #include "graphic.h"
 #include "symb.h"
 
+const PSProperties PS_DEFAULT_PROPS = {
+    .units = PS_UNIT,
+    // .p_width = A4_WIDTH,
+    // .p_height = A4_HEIGHT,
+    .lmargin = PS_MARGIN,
+    .rmargin = PS_MARGIN,
+    .tmargin = 2 * PS_MARGIN,
+    .bmargin = 2 * PS_MARGIN,
+    .bar_width = PS_WIDTH,
+    .bar_height = PS_HEIGHT,
+    .padding = PS_PAD,
+    .fontsize = PS_FONT_SIZE
+};
+
 size_t svg_bufsize(int rects) {
     // Add 1 to allow for the null terminator
-    return strlen(SVG_HEADER) + SVG_RECT_BUFSIZE * rects + strlen(SVG_FOOTER) + 1;
+    return strlen(SVG_HEADER) + SVG_RECT_BUFSIZE * rects + SVG_TEXT_BUFSIZE + strlen(SVG_FOOTER) + 1;
+}
+
+size_t ps_bufsize(int rects) {
+    // Add 1 for the null terminator
+    return PS_CMD_BUFSIZE * rects + PS_TEXT_BUFSIZE + 1;
 }
 
 int svg_rect(int x, int y, int w, int h, char *colour, char dest[][SVG_RECT_BUFSIZE]) {
@@ -53,6 +72,11 @@ int c128_text(char *text, int index, char dest[][SVG_TEXT_BUFSIZE]) {
     return SUCCESS;
 }
 
+int c128_ps_text(char *text, int fsize, int index, char dest[][PS_TEXT_BUFSIZE]) {
+    snprintf(*dest, PS_TEXT_BUFSIZE, PS_TEXT, fsize, text, index);
+    return SUCCESS;
+}
+
 int c128_rect_black(int x, int w, char dest[][SVG_RECT_BUFSIZE]) {
     svg_rect(x, SVG_DEFAULT_Y, w, SVG_RECT_HEIGHT, "black", dest);
     return SUCCESS;
@@ -60,6 +84,16 @@ int c128_rect_black(int x, int w, char dest[][SVG_RECT_BUFSIZE]) {
 
 int c128_rect_white(int x, int w, char dest[][SVG_RECT_BUFSIZE]) {
     svg_rect(x, SVG_DEFAULT_Y, w, SVG_RECT_HEIGHT, "white", dest);
+    return SUCCESS;
+}
+
+int c128_ps_rect_black(char dest[][PS_CMD_BUFSIZE]) {
+    strncpy(*dest, PS_BAR, strlen(PS_BAR));
+    return SUCCESS;
+}
+
+int c128_ps_rect_white(int w, char dest[][PS_CMD_BUFSIZE]) {
+    snprintf(*dest, PS_CMD_BUFSIZE, PS_WSPACE, w);
     return SUCCESS;
 }
 
@@ -78,15 +112,33 @@ int c128_pat2svg(pattern pat, int width, int *svg_x, char **dest) {
      * A decrementing counter is used so iteration begins from the left. Using the example above,
      * <tt>i == 6</tt> on the first iteration, <tt>(p >> 6) & 1 == 1</tt>, yielding a black bar.
      */
+
     for (int i = width - 1; i >= 0; i--) {
-        if (((pat >> i) & 1) == 1) {
+        if (((pat >> i) & 1) == Black) {
             char bar[SVG_RECT_BUFSIZE];
             c128_rect_black(*svg_x, SVG_RECT_WIDTH, &bar);
-            strncat(*dest, bar, strlen(bar));
+            strncat(*dest, bar, SVG_RECT_BUFSIZE);
             // For a white bar, nothing is added as the group fill is white
             // See SVG_HEADER in graphic.h
         }
         *svg_x += SVG_RECT_WIDTH;
+    }
+    return SUCCESS;
+}
+
+int c128_pat2ps(pattern pat, int width, float *ps_x, char **dest, const PSProperties *props) {
+    char bar[PS_CMD_BUFSIZE];
+    memset(&bar, 0, PS_CMD_BUFSIZE);
+    for (int i = width - 1; i >= 0; i--) {
+        if (((pat >> i) & 1) == Black) {
+            c128_ps_rect_black(&bar);
+        } else {
+            // 1, as there is a single bar
+            c128_ps_rect_white(1, &bar);
+        }
+        strncat(*dest, bar, PS_CMD_BUFSIZE);
+        *ps_x += props->bar_width;
+        memset(&bar, 0, PS_CMD_BUFSIZE);
     }
     return SUCCESS;
 }
@@ -99,7 +151,7 @@ int c128_svg(Code128 *code, char **dest) {
     static const int quiet_width = C128_QUIET_WIDTH * SVG_RECT_WIDTH;
 
     // +2 to account for the extra two bars at the end of the code
-    int    rects     = code->length * C128_DATA_WIDTH + 2 * C128_QUIET_WIDTH + 2;
+    int    rects     = code->datalen * C128_DATA_WIDTH + 2 * C128_QUIET_WIDTH + 2;
     size_t dest_size = svg_bufsize(rects);
     *dest            = calloc(1, dest_size);
     VERIFY_NULL(*dest, dest_size);
@@ -110,15 +162,17 @@ int c128_svg(Code128 *code, char **dest) {
     // As the background is white, the leading quiet zone is implemented by having quiet_width
     // whitespace before the rectangles are drawn
     int svg_x = quiet_width;
-    for (int i = 0; i < code->length; i++) {
+    for (int i = 0; i < code->datalen; i++) {
         /**
          * All Code 128 patterns are preceded by a black bar and followed by a white bar, so this is
          * removed from the internal representation and added when generating a barcode image.
          */
+        char bbar[SVG_RECT_BUFSIZE];
         pattern pat = code->data[i];
-        if (i + 1 != code->length) {
+        if (i + 1 != code->datalen) {
             // Add leading black bar
-            char bbar[SVG_RECT_BUFSIZE];
+
+            memset(&bbar, 0, PS_CMD_BUFSIZE);
             c128_rect_black(svg_x, SVG_RECT_WIDTH, &bbar);
             strncat(*dest, bbar, strlen(bbar));
             svg_x += SVG_RECT_WIDTH;
@@ -129,7 +183,7 @@ int c128_svg(Code128 *code, char **dest) {
             // Add trailing white bar
             svg_x += SVG_RECT_WIDTH;
         } else {
-            // Stop code, as i + 1 == code->length (last index)
+            // Stop code, as i + 1 == code->datalen (last index)
             c128_pat2svg(pat, C128_STOP_WIDTH, &svg_x, dest);
         }
     }
@@ -139,7 +193,7 @@ int c128_svg(Code128 *code, char **dest) {
 
     // Add the barcode text beneath the barcode at its centre
     char *text;
-    c128_strrepr(code->text, code->length, &text);
+    c128_strrepr(code->text, code->textlen, &text);
 
     char svg_text[SVG_TEXT_BUFSIZE];
     c128_text(text, svg_x / 2, &svg_text);
@@ -149,6 +203,119 @@ int c128_svg(Code128 *code, char **dest) {
     strncat(*dest, SVG_FOOTER, SVG_FOOTER_LEN);
 
     free(text);
+
+    return SUCCESS;
+}
+
+int c128_ps_init(char **dest, int barcodes) {
+    // + 1 for null terminator
+    size_t dest_size = PS_HEADER_BUFSIZE + ps_bufsize(C128_MAX_PATTERN_SIZE * C128_DATA_WIDTH + 2 * C128_QUIET_WIDTH) * barcodes + strlen(PS_FOOTER) + 1;
+    *dest = calloc(1, dest_size);
+    VERIFY_NULL(*dest, dest_size);
+
+    return SUCCESS;
+}
+
+int c128_ps_header(char **dest, const PSProperties *props) {
+    char header[PS_HEADER_BUFSIZE];
+    snprintf(
+        header,
+        PS_HEADER_BUFSIZE,
+        PS_HEADER,
+        props->units,
+        props->lmargin,
+        props->rmargin,
+        props->tmargin,
+        props->bmargin,
+        props->bar_width,
+        props->bar_height,
+        props->padding);
+
+    strncpy(*dest, header, PS_HEADER_BUFSIZE);
+
+    return SUCCESS;
+}
+
+int c128_ps_footer(char **dest) {
+    strncat(*dest, PS_FOOTER, PS_FOOTER_LEN);
+    return SUCCESS;
+}
+
+int c128_ps(Code128 *code, char **dest, const PSProperties *props) {
+    char quiet_zone[PS_CMD_BUFSIZE];
+    c128_ps_rect_white(C128_QUIET_WIDTH, &quiet_zone);
+    strncat(*dest, quiet_zone, PS_CMD_BUFSIZE);
+
+    int quiet_width = C128_QUIET_WIDTH * props->bar_width;
+    float ps_x = quiet_width;
+
+    for (int i = 0; i < code->datalen; i++) {
+        pattern pat = code->data[i];
+
+        char bar[PS_CMD_BUFSIZE];
+        memset(&bar, 0, PS_CMD_BUFSIZE);
+
+        if (i + 1 != code->datalen) {
+            c128_ps_rect_black(&bar);
+            strncat(*dest, bar, PS_CMD_BUFSIZE);
+            ps_x += props->bar_width;
+
+            c128_pat2ps(pat, C128_DATA_WIDTH - 2, &ps_x, dest, props);
+
+            memset(&bar, 0, PS_CMD_BUFSIZE);
+            c128_ps_rect_white(1, &bar);
+            strncat(*dest, bar, PS_CMD_BUFSIZE);
+            ps_x += props->bar_width;
+        } else {
+            c128_pat2ps(pat, C128_STOP_WIDTH, &ps_x, dest, props);
+        }
+    }
+
+    ps_x += props->bar_width;
+    strncat(*dest, quiet_zone, PS_CMD_BUFSIZE);
+    ps_x += quiet_width;
+
+    char *text;
+    c128_strrepr(code->text, code->textlen, &text);
+
+    char ps_text[PS_TEXT_BUFSIZE];
+    c128_ps_text(text, props->fontsize, ps_x / 2, &ps_text);
+
+    strncat(*dest, ps_text, PS_TEXT_BUFSIZE);
+
+    free(text);
+
+    return SUCCESS;
+}
+
+int c128_ps_layout(Code128 **codes, int num_codes, char **dest, const PSProperties *props, Layout *layout) {
+    c128_ps_init(dest, num_codes);
+    c128_ps_header(dest, props);
+
+    int row, col, lrow = -1, lcol = -1;
+    for (int i = 0; i < num_codes; i++) {
+        row = i / layout->cols;
+        col = i % layout->cols;
+
+        if (lrow != -1 && row != lrow) {
+            char rpos[PS_CMD_BUFSIZE];
+            snprintf(rpos, PS_CMD_BUFSIZE, PS_RPOS, 0.0, props->bar_height + props->fontsize);
+            strncat(*dest, rpos, PS_CMD_BUFSIZE);
+            strncat(*dest, PS_PADY, PS_CMD_BUFSIZE);
+            strncat(*dest, PS_RESET_X, PS_CMD_BUFSIZE);
+        }
+        if (lcol != -1 && col != lcol) {
+            strncat(*dest, PS_PADX, PS_CMD_BUFSIZE);
+            strncat(*dest, PS_RESET_Y, PS_CMD_BUFSIZE);
+        }
+
+        c128_ps((codes)[i], dest, props);
+
+        lrow = row;
+        lcol = col;
+    }
+
+    c128_ps_footer(dest);
 
     return SUCCESS;
 }

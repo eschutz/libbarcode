@@ -116,7 +116,7 @@ int init_barcode(void) {
 
 /**
  *      @detail Iterates through @c data to replacing every instance of a control character with its
- *              its string representation supplied by ctrl_strrepr and DEL_STRREPR.
+ *              string representation supplied by ctrl_strrepr and DEL_STRREPR.
  *      @see ctrl_strrepr
  *      @see DEL_STRREPR
  */
@@ -193,9 +193,31 @@ int c128_checksum(int *values, int val_len, int *dest) {
     // Algorithm:
     // Add the start value to the sum of the encoded values multiplied by their
     // index The checksum is this sum modulo the length of Code 128 codes (103)
-    *dest = values[0]; // Start value
+    bool codeB = false;
+    if (values[0] == StartB) {
+        codeB = true;
+        *dest = C128_B_VALUE(values[0]); // Start value
+    } else {
+        *dest = values[0]; // Start value
+    }
     for (int i = 1; i < val_len; i++) {
-        *dest += values[i] * i;
+        switch (values[i]) {
+            case AShiftB:
+            case ACodeB: // (or CCodeB, as ACodeB == CCodeB)
+                codeB = true;
+                break;
+            case ACodeC:
+            case BShiftA:
+            case BCodeA:
+            case BCodeC:
+            case CCodeA:
+                codeB = false;
+                break;
+            default:
+                codeB = false;
+                break;
+        }
+        *dest += (codeB ? C128_B_VALUE(values[i]) : values[i]) * i;
     }
     *dest %= C128_CODE_SIZE;
     return SUCCESS;
@@ -359,7 +381,7 @@ int c128_encode(uchar *data, int data_len, Code128 **dest) {
                 code = C;
                 i--; // Retry with code as C
                 continue;
-            } else if ((A == code && !IN_C128_A(chr)) || (B == code && !IN_C128_B(chr))) {
+            } else if (CODE_CHANGE_NEEDED(code, chr)) {
                 // If an A<->B code change is necessary
                 if (next < data_len &&
                     ((A == code && IN_C128_B(next_chr)) || (B == code && IN_C128_A(next_chr)))) {
@@ -425,12 +447,14 @@ int c128_encode(uchar *data, int data_len, Code128 **dest) {
         return status;
     }
 
-    switch (code) {
-        case A: dest_pat[values_len] = C128_CODE[C128_A_INVERSE[C128_A_VALUE(checksum)]]; break;
-        case B: dest_pat[values_len] = C128_CODE[C128_B_VALUE(checksum)]; break;
-        case C: dest_pat[values_len] = C128_CODE[C128_C_VALUE(checksum)]; break;
-        default: fprintf(stderr, "invalid code set '%d'", code); return ERR_INVALID_CODE_SET;
-    }
+    dest_pat[values_len] = C128_CODE[checksum];
+    //
+    // switch (code) {
+    //     case A:  break;
+    //     case B: dest_pat[values_len] = C128_CODE[checksum]; break;
+    //     case C: dest_pat[values_len] = C128_CODE[checksum]; break;
+    //     default: fprintf(stderr, "invalid code set '%d'", code); return ERR_INVALID_CODE_SET;
+    // }
 
     // Allow for the checksum and stop pattern in the pattern length
     int pat_len = values_len + 2;
@@ -442,7 +466,8 @@ int c128_encode(uchar *data, int data_len, Code128 **dest) {
     *dest = calloc(1, total_size);
     VERIFY_NULL(dest, total_size);
 
-    (*dest)->length = pat_len;
+    (*dest)->textlen = data_len;
+    (*dest)->datalen = pat_len;
     memcpy((*dest)->text, data, data_len);
     memcpy((*dest)->data, dest_pat, dest_size);
 

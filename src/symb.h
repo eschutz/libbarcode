@@ -92,8 +92,8 @@
 #define C128_STOP_WIDTH       13
 #define C128_QUIET_WIDTH      10
 #define C128_MAX_DATA_LEN     20
-#define C128_MAX_PATTERN_SIZE 42
-#define C128_MAX_STRREPR_SIZE CTRL_STR_SIZE * C128_MAX_PATTERN_SIZE + 1
+#define C128_MAX_PATTERN_SIZE 43
+#define C128_MAX_STRREPR_SIZE (CTRL_STR_SIZE * C128_MAX_PATTERN_SIZE + 1)
 /*@}*/
 
 /**
@@ -105,6 +105,7 @@
 #define IN_C128_B(x) (32 <= x && x <= 127)
 #define USE_C128_C_FULL(x) (x > 1 && x % 2 == 0)
 #define USE_C128_DGT(str, idx, len) use_c128_dgt(str, idx, len)
+#define CODE_CHANGE_NEEDED(code, chr) ((A == code && !IN_C128_A(chr)) || (B == code && !IN_C128_B(chr)))
 #define C128_C_MIN_DGT_MID 6
 #define C128_C_MIN_DGT_END 4
 
@@ -188,7 +189,8 @@ extern const char ctrl_strrepr[32][C128_MAX_STRREPR_SIZE];
  *      @see c128_strrepr
  */
 struct Code128_Barcode {
-    int     length;
+    int     datalen;
+    int     textlen;
     uchar   text[C128_MAX_DATA_LEN];
     pattern data[];
 };

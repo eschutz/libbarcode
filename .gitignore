@@ -1,6 +1,8 @@
 .DS_Store
 old
-test.svg
+*.svg
+*.ps
+*.pdf
 .clang-expand
 main
 main.exe
