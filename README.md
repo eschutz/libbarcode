@@ -12,9 +12,9 @@ long, versatile barcode printing services, and decoding services.
 ## Roadmap
 - [x] Code 128 barcode generation from a 20-character string
 - [x] Generate Code 128 barcode SVGs
-- [ ] Print barcodes (Windows only)
-  - [ ] Print in user-defined sizes
-  - [ ] Print multiple different barcodes on one page
+- [x] Print barcodes (PostScript format)
+  - [x] Print in user-defined sizes
+  - [x] Print multiple different barcodes on one page
 - [ ] Read barcodes from an internal representation
 - [ ] Add Java bindings
 
