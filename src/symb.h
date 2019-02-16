@@ -63,12 +63,14 @@
 #define RS  30
 #define US  31
 #define DEL 127
+/*      @brief The total number of ASCII control characters */
+#define ASCII_NUM_CTRL 32
 /*@}*/
 
 /**
- *      @brief Evaluates to true if @c c is an ASCII control character.
+ *      @brief Evaluates to true if @c c is an ASCII control character or @c DEL.
  */
-#define IS_CTRL(c) (0 <= c && c < 32 || 127 == c)
+#define IS_CTRL(c) (0 <= c && c < ASCII_NUM_CTRL || DEL == c)
 
 /**
  *      @brief Length of a string representation of a control character (excludes null
@@ -92,8 +94,11 @@
 #define C128_STOP_WIDTH       13
 #define C128_QUIET_WIDTH      10
 #define C128_MAX_DATA_LEN     20
-#define C128_MAX_PATTERN_SIZE 43
+// Use for defining the length of (null-terminated) strings prior to processing
+#define C128_MAX_STRING_LEN   C128_MAX_DATA_LEN + 1
+#define C128_MAX_PATTERN_SIZE 42
 #define C128_MAX_STRREPR_SIZE (CTRL_STR_SIZE * C128_MAX_PATTERN_SIZE + 1)
+#define C128_INVERSE_SIZE 512
 /*@}*/
 
 /**
@@ -102,7 +107,7 @@
  */
 /*@{*/
 #define IN_C128_A(x) ((0 <= x && x <= 95) || (97 <= x && x <= 106))
-#define IN_C128_B(x) (32 <= x && x <= 127)
+#define IN_C128_B(x) (ASCII_NUM_CTRL <= x && x <= DEL)
 #define USE_C128_C_FULL(x) (x > 1 && x % 2 == 0)
 #define USE_C128_DGT(str, idx, len) use_c128_dgt(str, idx, len)
 #define CODE_CHANGE_NEEDED(code, chr) ((A == code && !IN_C128_A(chr)) || (B == code && !IN_C128_B(chr)))
@@ -111,7 +116,7 @@
 
 /* Macros to convert a char to its Code 128 value */
 #define C128_A_VALUE(c) (C128_A_INVERSE[c])
-#define C128_B_VALUE(c) (c - 32)
+#define C128_B_VALUE(c) (c - ASCII_NUM_CTRL)
 #define C128_C_VALUE(c) (c)
 
 /* Macros for special Code 128 patterns */
@@ -179,7 +184,7 @@ typedef enum Code128Ctrl_C Code128Ctrl_C;
  *      @see DEL_STRREPR
  *      @see c128_strrepr
  */
-extern const char ctrl_strrepr[32][C128_MAX_STRREPR_SIZE];
+extern const char ctrl_strrepr[ASCII_NUM_CTRL][C128_MAX_STRREPR_SIZE];
 
 /**
  *      @detail Stores the length of the barcode stored in data[], the text it represents, and the
@@ -233,7 +238,7 @@ extern const pattern C128_CODE[C128_CODE_SIZE];
  *      @brief Pattern-to-value mapping for reading Code 128 barcodes. Inverse of C128_CODE.
  *      @see C128_CODE
  */
-extern uchar C128_CODE_INVERSE[512];
+extern uchar C128_CODE_INVERSE[];
 
 /**
  *      @brief Value-to-character mapping for reading Code 128 barcodes in Code A.
@@ -248,7 +253,7 @@ extern const uchar C128_A[C128_CODE_SIZE];
  *      @see C128_A
  *      @see C128_A_VALUE
  */
-extern const int C128_A_INVERSE[103];
+extern const int C128_A_INVERSE[C128_CODE_SIZE];
 
 /**
  *      @brief Value-to-character mapping for reading Code 128 barcodes in Code B.
@@ -304,6 +309,7 @@ int c128_checksum(int *, int, int *);
  *      @param data The data to be encoded.
  *      @param data_len The length of the data array.
  *      @param dest A double pointer to a Code128 structure.
+ *      @return SUCCESS or ERR_ARGUMENT
  *      @warning data is interpreted as a uchar array, @e not a
  *               string. The null terminator is a valid Code 128 character, so must be removed from
  *               a string beforehand.

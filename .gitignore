@@ -13,3 +13,5 @@ doc/*
 !doc/.gitkeep
 cert
 release*
+lib/*
+!lib/.gitkeep

@@ -28,23 +28,23 @@
 #include "graphic.h"
 #include "symb.h"
 
-const PSProperties PS_DEFAULT_PROPS = {
-    .units = PS_UNIT,
-    // .p_width = A4_WIDTH,
-    // .p_height = A4_HEIGHT,
-    .lmargin = PS_MARGIN,
-    .rmargin = PS_MARGIN,
-    .tmargin = 2 * PS_MARGIN,
-    .bmargin = 2 * PS_MARGIN,
-    .bar_width = PS_WIDTH,
-    .bar_height = PS_HEIGHT,
-    .padding = PS_PAD,
-    .fontsize = PS_FONT_SIZE
-};
+const PSProperties PS_DEFAULT_PROPS = {.units = PS_UNIT,
+                                       // .p_width = A4_WIDTH,
+                                       // .p_height = A4_HEIGHT,
+                                       .lmargin      = PS_MARGIN,
+                                       .rmargin      = PS_MARGIN,
+                                       .tmargin      = 2 * PS_MARGIN,
+                                       .bmargin      = 2 * PS_MARGIN,
+                                       .bar_width    = PS_WIDTH,
+                                       .bar_height   = PS_HEIGHT,
+                                       .padding      = PS_PAD,
+                                       .column_width = PS_COL_W,
+                                       .fontsize     = PS_FONT_SIZE};
 
 size_t svg_bufsize(int rects) {
     // Add 1 to allow for the null terminator
-    return strlen(SVG_HEADER) + SVG_RECT_BUFSIZE * rects + SVG_TEXT_BUFSIZE + strlen(SVG_FOOTER) + 1;
+    return strlen(SVG_HEADER) + SVG_RECT_BUFSIZE * rects + SVG_TEXT_BUFSIZE + strlen(SVG_FOOTER) +
+           1;
 }
 
 size_t ps_bufsize(int rects) {
@@ -126,6 +126,10 @@ int c128_pat2svg(pattern pat, int width, int *svg_x, char **dest) {
     return SUCCESS;
 }
 
+/**
+ *      @detail See c128_pat2svg() for details on the algorithim used to print barcodes
+ *      @see c128_pat2svg
+ */
 int c128_pat2ps(pattern pat, int width, float *ps_x, char **dest, const PSProperties *props) {
     char bar[PS_CMD_BUFSIZE];
     memset(&bar, 0, PS_CMD_BUFSIZE);
@@ -167,12 +171,12 @@ int c128_svg(Code128 *code, char **dest) {
          * All Code 128 patterns are preceded by a black bar and followed by a white bar, so this is
          * removed from the internal representation and added when generating a barcode image.
          */
-        char bbar[SVG_RECT_BUFSIZE];
+        char    bbar[SVG_RECT_BUFSIZE];
         pattern pat = code->data[i];
         if (i + 1 != code->datalen) {
             // Add leading black bar
 
-            memset(&bbar, 0, PS_CMD_BUFSIZE);
+            memset(&bbar, 0, SVG_RECT_BUFSIZE);
             c128_rect_black(svg_x, SVG_RECT_WIDTH, &bbar);
             strncat(*dest, bbar, strlen(bbar));
             svg_x += SVG_RECT_WIDTH;
@@ -207,47 +211,58 @@ int c128_svg(Code128 *code, char **dest) {
     return SUCCESS;
 }
 
+/**
+ *      @detail This function is used internally, so you're probably looking for c128_ps_layout()
+ *      @see c128_ps_layout()
+ */
 int c128_ps_init(char **dest, int barcodes) {
     // + 1 for null terminator
-    size_t dest_size = PS_HEADER_BUFSIZE + ps_bufsize(C128_MAX_PATTERN_SIZE * C128_DATA_WIDTH + 2 * C128_QUIET_WIDTH) * barcodes + strlen(PS_FOOTER) + 1;
+    size_t dest_size = PS_HEADER_BUFSIZE +
+                       ps_bufsize(C128_MAX_PATTERN_SIZE * C128_DATA_WIDTH + 2 * C128_QUIET_WIDTH +
+                                  PS_MAX_POSITION_CMDS * PS_CMD_BUFSIZE) *
+                           barcodes +
+                       strlen(PS_FOOTER) + 1;
     *dest = calloc(1, dest_size);
     VERIFY_NULL(*dest, dest_size);
 
     return SUCCESS;
 }
 
+/**
+ *      @detail This function is used internally, so you're probably looking for c128_ps_layout()
+ *      @see c128_ps_layout()
+ */
 int c128_ps_header(char **dest, const PSProperties *props) {
     char header[PS_HEADER_BUFSIZE];
-    snprintf(
-        header,
-        PS_HEADER_BUFSIZE,
-        PS_HEADER,
-        props->units,
-        props->lmargin,
-        props->rmargin,
-        props->tmargin,
-        props->bmargin,
-        props->bar_width,
-        props->bar_height,
-        props->padding);
+    snprintf(header, PS_HEADER_BUFSIZE, PS_HEADER, props->units, props->lmargin, props->rmargin,
+             props->tmargin, props->bmargin, props->bar_width, props->bar_height, props->padding,
+             props->column_width);
 
     strncpy(*dest, header, PS_HEADER_BUFSIZE);
 
     return SUCCESS;
 }
 
+/**
+ *      @detail This function is used internally, so you're probably looking for c128_ps_layout()
+ *      @see c128_ps_layout()
+ */
 int c128_ps_footer(char **dest) {
     strncat(*dest, PS_FOOTER, PS_FOOTER_LEN);
     return SUCCESS;
 }
 
+/**
+ *      @detail This function is used internally, so you're probably looking for c128_ps_layout()
+ *      @see c128_ps_layout()
+ */
 int c128_ps(Code128 *code, char **dest, const PSProperties *props) {
     char quiet_zone[PS_CMD_BUFSIZE];
     c128_ps_rect_white(C128_QUIET_WIDTH, &quiet_zone);
     strncat(*dest, quiet_zone, PS_CMD_BUFSIZE);
 
-    int quiet_width = C128_QUIET_WIDTH * props->bar_width;
-    float ps_x = quiet_width;
+    int   quiet_width = C128_QUIET_WIDTH * props->bar_width;
+    float ps_x        = quiet_width;
 
     for (int i = 0; i < code->datalen; i++) {
         pattern pat = code->data[i];
@@ -288,7 +303,12 @@ int c128_ps(Code128 *code, char **dest, const PSProperties *props) {
     return SUCCESS;
 }
 
-int c128_ps_layout(Code128 **codes, int num_codes, char **dest, const PSProperties *props, Layout *layout) {
+int c128_ps_layout(Code128 **codes, int num_codes, char **dest, const PSProperties *props,
+                   Layout *layout) {
+    if ((unsigned int)num_codes > layout->cols * layout->rows) {
+        return ERR_INVALID_LAYOUT;
+    }
+
     c128_ps_init(dest, num_codes);
     c128_ps_header(dest, props);
 
@@ -305,8 +325,11 @@ int c128_ps_layout(Code128 **codes, int num_codes, char **dest, const PSProperti
             strncat(*dest, PS_RESET_X, PS_CMD_BUFSIZE);
         }
         if (lcol != -1 && col != lcol) {
+            char col_pos[PS_CMD_BUFSIZE];
+            snprintf(col_pos, PS_CMD_BUFSIZE, PS_COL_POS, props->column_width, col);
+            strncat(*dest, col_pos, PS_CMD_BUFSIZE);
             strncat(*dest, PS_PADX, PS_CMD_BUFSIZE);
-            strncat(*dest, PS_RESET_Y, PS_CMD_BUFSIZE);
+            // strncat(*dest, PS_RESET_Y, PS_CMD_BUFSIZE);
         }
 
         c128_ps((codes)[i], dest, props);

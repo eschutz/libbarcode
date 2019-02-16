@@ -1,9 +1,10 @@
 SHELL=/bin/sh
 
 MAINFILE=main
+MAINOBJ=$(ODIR)/$(MAINFILE).o
 SDIR=src
 ODIR=build
-_OBJS=main.o symb.o util.o graphic.o
+_OBJS=symb.o util.o graphic.o
 OBJS=$(patsubst %,$(ODIR)/%,$(_OBJS))
 _DEPS=symb.h util.h errors.h graphic.h
 DEPS=$(patsubst %,$(SDIR)/%,$(_DEPS))
@@ -15,15 +16,15 @@ else
 endif
 ARFLAGS=rs
 
-LIBNAME=out/barcode.a
+LIBNAME=lib/barcode.a
 
 $(ODIR)/%.o: $(DEPS) $(SDIR)/%.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $(SDIR)/$*.c -o $@
 
-main: $(OBJS)
-	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $(OBJS) $(LIBS)
+main: $(MAINOBJ) $(OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $(MAINOBJ) $(OBJS) $(LIBS)
 
-lib: all
+lib: $(OBJS)
 	$(AR) $(ARFLAGS) $(LIBNAME) $(OBJS)
 
 all: main

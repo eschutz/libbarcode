@@ -40,6 +40,7 @@
 #define ERR_INVALID_CODE_SET    5
 #define ERR_ALREADY_INITIALISED 6
 #define ERR_NULL_PATTERN        7
+#define ERR_INVALID_LAYOUT      8
 /*@}*/
 
 // clang-format on

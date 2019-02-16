@@ -38,5 +38,8 @@ in the function so this should also be unassigned.
 
 The resulting SVG can then be written to file and viewed or used in some other way.
 
+## Example
+See `src/main.c` for a PostScript example.
+
 ## License
 This project is licensed under the GNU Lesser General Public License. See [LICENSE](../blob/master/LICENSE) and [COPYING.LESSER](../blob/master/COPYING.LESSER) for more information.

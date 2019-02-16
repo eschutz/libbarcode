@@ -210,12 +210,8 @@ int c128_checksum(int *values, int val_len, int *dest) {
             case BShiftA:
             case BCodeA:
             case BCodeC:
-            case CCodeA:
-                codeB = false;
-                break;
-            default:
-                codeB = false;
-                break;
+            case CCodeA: codeB = false; break;
+            default: codeB = false; break;
         }
         *dest += (codeB ? C128_B_VALUE(values[i]) : values[i]) * i;
     }
@@ -461,7 +457,7 @@ int c128_encode(uchar *data, int data_len, Code128 **dest) {
 
     dest_pat[pat_len - 1] = STOPPT;
 
-    size_t total_size = sizeof **dest + dest_size;
+    size_t total_size = sizeof *dest + dest_size + sizeof *data * data_len;
 
     *dest = calloc(1, total_size);
     VERIFY_NULL(dest, total_size);
