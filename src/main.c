@@ -35,7 +35,8 @@ char strings[STRINGS][C128_MAX_STRING_LEN] = {
 int main(void) {
     init_barcode();
     char      texts[STRINGS][C128_MAX_DATA_LEN];
-    Code128 **codes = calloc(1, sizeof codes * STRINGS);
+    Code128 **codes = calloc(1, sizeof *codes * STRINGS);
+    VERIFY_NULL(codes, sizeof *codes * STRINGS);
     for (int i = 0; i < STRINGS; i++) {
         int len = strlen(strings[i]);
         memcpy(texts[i], strings[i], len); // Remove null terminator
@@ -43,8 +44,9 @@ int main(void) {
     }
 
     char * ps;
-    Layout layout = {.rows = 3, .cols = 2};
-    c128_ps_layout(codes, STRINGS, &ps, &PS_DEFAULT_PROPS, &layout);
+    Layout layout = {.rows = 9, .cols = 2};
+    int status = c128_ps_layout(codes, STRINGS, &ps, &PS_DEFAULT_PROPS, &layout);
+    printf("%d\n", status);
     printf("%s\n", ps);
     free(ps);
     for (int i = 0; i < STRINGS; i++) {

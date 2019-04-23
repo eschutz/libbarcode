@@ -139,8 +139,6 @@
 #define PS_TEXT_BUFSIZE 254
 #define PS_MAX_POSITION_CMDS 3
 
-// #define A4_WIDTH 210
-// #define A4_HEIGHT 297
 /*@}*/
 
 /**

@@ -305,7 +305,8 @@ int c128_ps(Code128 *code, char **dest, const PSProperties *props) {
 
 int c128_ps_layout(Code128 **codes, int num_codes, char **dest, const PSProperties *props,
                    Layout *layout) {
-    if ((unsigned int)num_codes > layout->cols * layout->rows) {
+    unsigned int max_codes = layout->cols * layout->rows;
+    if ((unsigned int)num_codes > max_codes || max_codes == 0) {
         return ERR_INVALID_LAYOUT;
     }
 
