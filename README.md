@@ -1,5 +1,5 @@
-# barcode.a
-A small barcode scanning, generation, and printing C library.
+# libbarcode
+A small Code 128 barcode scanning, generation, and printing C library.
 
 ## Background
 This project was started to provide specialised barcode printing and scanning
