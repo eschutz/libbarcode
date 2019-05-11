@@ -33,8 +33,14 @@ install: lib
 
 debug: CFLAGS += -O0
 
-debug: clean
-	docker run -v $(PWD):/home/ valgrind-docker bash -c "cd home; make clean; make main; valgrind --leak-check=yes --read-var-info=yes --track-origins=yes ./main"
+debug:
+	if [ $(shell uname -s) = "Darwin" ]; then\
+		docker run -v $(PWD):/home/ valgrind-docker bash -c "cd home; make clean; make main; valgrind --leak-check=yes --read-var-info=yes --track-origins=yes ./main";\
+	else\
+		clean;\
+		main;\
+		valgrind --leak-check=yes --read-var-info=yes --track-origins=yes ./main;\
+	fi
 
 .PHONY: clean
 
