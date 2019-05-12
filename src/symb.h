@@ -309,7 +309,7 @@ int c128_checksum(int *, int, int *);
  *      @param data The data to be encoded.
  *      @param data_len The length of the data array.
  *      @param dest A double pointer to a Code128 structure.
- *      @return SUCCESS or ERR_ARGUMENT
+ *      @return SUCCESS, ERR_DATA_LENGTH, ERR_CHAR_INVALID, ERR_INVALID_CODE_SET, ERR_ARGUMENT
  *      @warning data is interpreted as a uchar array, @e not a
  *               string. The null terminator is a valid Code 128 character, so must be removed from
  *               a string beforehand.

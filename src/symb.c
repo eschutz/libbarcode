@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <setjmp.h>
 
 #include "errors.h"
 #include "symb.h"
@@ -237,238 +238,256 @@ int c128_encode(uchar *data, int data_len, Code128 **dest) {
         fprintf(stderr, "data length exceeds maximum of %d\n", C128_MAX_DATA_LEN);
         return ERR_DATA_LENGTH;
     }
-    int status;
+
+    jmp_buf env;
+    int status = SUCCESS;
     int values_len = 0;
 
-    // values stores the numerical values of the symbols
-    size_t values_size = sizeof(int) * C128_MAX_PATTERN_SIZE;
-    int *  values      = malloc(values_size);
-    VERIFY_NULL(values, values_size);
+    size_t values_size;
+    int* values;
 
-    // dest_pat stores the patterns of the symbols, i.e. C128_CODE[values]
-    size_t   dest_size = sizeof(pattern) * C128_MAX_PATTERN_SIZE;
-    pattern *dest_pat  = malloc(dest_size);
-    VERIFY_NULL(dest_pat, dest_size);
+    size_t dest_size;
+    pattern *dest_pat;
 
     Code128CodeSet code = Invalid;
 
-    /**
-     * If the full data has an even length and is solely numeric, code C can be used for the whole
-     * thing. As code C encodes 2 digits per value, this method yields 2x compression.
+    /* setjmp() and longjmp() are used to handle exceptions
+     * When an exception occurs, status is set and longjmp() is called, returning code execution to
+     * where setjmp() was called. This allows nested error handling and memory freeing.
      */
-    if (USE_C128_C_FULL(data_len) && isdigits((char *)data, data_len)) {
-        code        = C;
-        values[0]   = StartC;
-        dest_pat[0] = START_C;
-        values_len++;
+    if (!setjmp(env)) {
+        // values stores the numerical values of the symbols
+        values_size = sizeof(int) * C128_MAX_PATTERN_SIZE;
+        values      = malloc(values_size);
+        VERIFY_NULL(values, values_size);
 
-        // Code C encodes 2 digits per value, so the character index increases by 2 each iteration
-        for (int i = 0; i < data_len; i += 2) {
-            status = c128_c_digit(data[i], data[i + 1], &values[values_len]);
-            if (SUCCESS != status) {
-                return status;
-            }
-            dest_pat[values_len] = C128_CODE[C128_C_VALUE(values[values_len])];
-            values_len++;
-        }
-    } else {
-        char init = data[0];
+        // dest_pat stores the patterns of the symbols, i.e. C128_CODE[values]
+        dest_size = sizeof(pattern) * C128_MAX_PATTERN_SIZE;
+        dest_pat  = malloc(dest_size);
+        VERIFY_NULL(dest_pat, dest_size);
 
-        // If the first C128_C_MIN_DGT_END characters are digits, code C can be used initially
-        if (USE_C128_DGT((char *)data, 0, C128_C_MIN_DGT_END)) {
+        /**
+         * If the full data has an even length and is solely numeric, code C can be used for the whole
+         * thing. As code C encodes 2 digits per value, this method yields 2x compression.
+         */
+        if (USE_C128_C_FULL(data_len) && isdigits((char *)data, data_len)) {
             code        = C;
             values[0]   = StartC;
             dest_pat[0] = START_C;
             values_len++;
 
-            for (int i = 0; i < C128_C_MIN_DGT_END; i += 2) {
+            // Code C encodes 2 digits per value, so the character index increases by 2 each iteration
+            for (int i = 0; i < data_len; i += 2) {
                 status = c128_c_digit(data[i], data[i + 1], &values[values_len]);
                 if (SUCCESS != status) {
-                    return status;
+                    longjmp(env, status);
                 }
                 dest_pat[values_len] = C128_CODE[C128_C_VALUE(values[values_len])];
                 values_len++;
             }
-        } else if (IN_C128_B(init)) {
-            code        = B;
-            values[0]   = StartB;
-            dest_pat[0] = START_B;
-            values[1]   = C128_B_VALUE(init);
-            dest_pat[1] = C128_CODE[values[1]];
-            values_len += 2;
-        } else if (IN_C128_A(init)) {
-            code        = A;
-            values[0]   = StartA;
-            dest_pat[0] = START_A;
-            values[1]   = C128_A_VALUE((int)init);
-            dest_pat[1] = C128_CODE[values[1]];
-            values_len += 2;
         } else {
-            fprintf(stderr, "no code set available for character '%c'", init);
-            return ERR_CHAR_INVALID;
-        }
+            char init = data[0];
 
-        for (int i = 1; i < data_len; i++) {
-            char  chr      = data[i];
-            int   next     = i + 1;
-            uchar next_chr = data[next];
+            // If the first C128_C_MIN_DGT_END characters are digits, code C can be used initially
+            if (USE_C128_DGT((char *)data, 0, C128_C_MIN_DGT_END)) {
+                code        = C;
+                values[0]   = StartC;
+                dest_pat[0] = START_C;
+                values_len++;
 
-            // Code C is just digits (single digits can be encoded in A and B), so if chr is not
-            // present in either A or B, it is unsupported.
-            if (!IN_C128_A(chr) && !IN_C128_B(chr)) {
-                fprintf(stderr, "no code set available for character '%c'", init);
-                return ERR_CHAR_INVALID;
-            }
-
-            if (C == code) {
-                if (isdigit(chr) && next < data_len && isdigit(next_chr)) {
-                    status = c128_c_digit(chr, next_chr, &values[values_len]);
+                for (int i = 0; i < C128_C_MIN_DGT_END; i += 2) {
+                    status = c128_c_digit(data[i], data[i + 1], &values[values_len]);
                     if (SUCCESS != status) {
-                        return status;
+                        longjmp(env, status);
                     }
                     dest_pat[values_len] = C128_CODE[C128_C_VALUE(values[values_len])];
-                    // Code C has a compression factor of 2x, so we skip the next
-                    // char as they're both digits.
-                    i++;
-                } else {
-                    // If the default code set is B, DEFAULT_C128_SWITCH(C) generates the enum
-                    // property CcodeB of Code128Ctrl_C.
-                    Code128Ctrl_C val    = DEFAULT_C128_SWITCH(C);
-                    values[values_len]   = val;
-                    dest_pat[values_len] = C128_CODE[C128_C_VALUE(val)];
-                    code                 = DEFAULT_C128_CODESET;
-                    // Decrement, so we redo this index on the next iteration.
-                    i--;
+                    values_len++;
                 }
-                values_len++;
-            } else if (isdigit(chr) && ((i + C128_C_MIN_DGT_END <= data_len &&
-                                         USE_C128_DGT((char *)data, i, data_len - i)) ||
-                                        (i + C128_C_MIN_DGT_MID <= data_len &&
-                                         USE_C128_DGT((char *)data, i, C128_C_MIN_DGT_MID)))) {
-                /**
-                 * There happens to be an optimum number of digits that minimises the number of
-                 * patterns in the barcode when switching to code C.
-                 * This is as follows (from Wikipedia)
-                 * | Location of Digits | Number of consecutive digits |
-                 * |  beginning of data |              4+              |
-                 * |     end of data    |              4+              |
-                 * |   middle of data   |              6+              |
-                 * |     entire data    |  either 2 or 4+ (but not 3)  |
-                 *
-                 * The bottom case has already handled (USE_C128_C_FULL), as has the first case.
-                 * The middle two cases are handled in the above statement using C128_C_MIN_DGT_END
-                 * (4) and C128_C_MIN_DGT_MID (6).
-                 *
-                 * If this section is evaluated, a code transition pattern to code C (e.g.ACodeC)
-                 * is encoded, and the current character re-encoded.
-                 */
-
-                if (A == code) {
-                    values[values_len]   = ACodeC;
-                    dest_pat[values_len] = C128_CODE[C128_A_VALUE(ACodeC)];
-                } else if (B == code) {
-                    values[values_len]   = BCodeC;
-                    dest_pat[values_len] = C128_CODE[C128_B_VALUE(BCodeC)];
-                } else {
-                    fprintf(stderr, "invalid code set '%d'", code);
-                    return ERR_INVALID_CODE_SET;
-                }
-                values_len++;
-                code = C;
-                i--; // Retry with code as C
-                continue;
-            } else if (CODE_CHANGE_NEEDED(code, chr)) {
-                // If an A<->B code change is necessary
-                if (next < data_len &&
-                    ((A == code && IN_C128_B(next_chr)) || (B == code && IN_C128_A(next_chr)))) {
-                    /**
-                     * We check if the next character matches the alternative code set.
-                     * If it is in the new code set, encode an XcodeY pattern,
-                     * otherwise encode XshiftY (for one character).
-                     */
-                    if (A == code) {
-                        code                 = B;
-                        values[values_len]   = ACodeB;
-                        dest_pat[values_len] = C128_CODE[C128_A_VALUE(ACodeB)];
-                    } else {
-                        code                 = A;
-                        values[values_len]   = BCodeA;
-                        dest_pat[values_len] = C128_CODE[C128_B_VALUE(BCodeA)];
-                    }
-                } else {
-                    if (A == code) {
-                        code                 = B;
-                        values[values_len]   = AShiftB;
-                        dest_pat[values_len] = C128_CODE[C128_A_VALUE(AShiftB)];
-                    } else {
-                        code                 = A;
-                        values[values_len]   = BShiftA;
-                        dest_pat[values_len] = C128_CODE[C128_B_VALUE(BShiftA)];
-                    }
-                }
-                values_len++;
-                i--; // Retry with changed code
+            } else if (IN_C128_B(init)) {
+                code        = B;
+                values[0]   = StartB;
+                dest_pat[0] = START_B;
+                values[1]   = C128_B_VALUE(init);
+                dest_pat[1] = C128_CODE[values[1]];
+                values_len += 2;
+            } else if (IN_C128_A(init)) {
+                code        = A;
+                values[0]   = StartA;
+                dest_pat[0] = START_A;
+                values[1]   = C128_A_VALUE((int)init);
+                dest_pat[1] = C128_CODE[values[1]];
+                values_len += 2;
             } else {
-                // Handles the cases where the code does not change
-                switch (code) {
-                    int val;
-                    case B:
-                        val                  = C128_B_VALUE(chr);
-                        values[values_len]   = val;
-                        dest_pat[values_len] = C128_CODE[val];
-                        break;
-                    case A:
-                        val                  = C128_A_VALUE((int)chr);
-                        values[values_len]   = val;
-                        dest_pat[values_len] = C128_CODE[C128_A_INVERSE[val]];
-                        break;
-                    default:
-                        fprintf(stderr, "invalid code set '%d'", code);
-                        return ERR_INVALID_CODE_SET;
+                fprintf(stderr, "no code set available for character '%c'", init);
+                status = ERR_CHAR_INVALID;
+                longjmp(env, status);
+            }
+
+            for (int i = 1; i < data_len; i++) {
+                char  chr      = data[i];
+                int   next     = i + 1;
+                uchar next_chr = data[next];
+
+                // Code C is just digits (single digits can be encoded in A and B), so if chr is not
+                // present in either A or B, it is unsupported.
+                if (!IN_C128_A(chr) && !IN_C128_B(chr)) {
+                    fprintf(stderr, "no code set available for character '%c'", init);
+                    status = ERR_CHAR_INVALID;
+                    longjmp(env, status);
                 }
-                values_len++;
+
+                if (C == code) {
+                    if (isdigit(chr) && next < data_len && isdigit(next_chr)) {
+                        status = c128_c_digit(chr, next_chr, &values[values_len]);
+                        if (SUCCESS != status) {
+                            longjmp(env, status);
+                        }
+                        dest_pat[values_len] = C128_CODE[C128_C_VALUE(values[values_len])];
+                        // Code C has a compression factor of 2x, so we skip the next
+                        // char as they're both digits.
+                        i++;
+                    } else {
+                        // If the default code set is B, DEFAULT_C128_SWITCH(C) generates the enum
+                        // property CcodeB of Code128Ctrl_C.
+                        Code128Ctrl_C val    = DEFAULT_C128_SWITCH(C);
+                        values[values_len]   = val;
+                        dest_pat[values_len] = C128_CODE[C128_C_VALUE(val)];
+                        code                 = DEFAULT_C128_CODESET;
+                        // Decrement, so we redo this index on the next iteration.
+                        i--;
+                    }
+                    values_len++;
+                } else if (isdigit(chr) && ((i + C128_C_MIN_DGT_END <= data_len &&
+                                             USE_C128_DGT((char *)data, i, data_len - i)) ||
+                                            (i + C128_C_MIN_DGT_MID <= data_len &&
+                                             USE_C128_DGT((char *)data, i, C128_C_MIN_DGT_MID)))) {
+                    /**
+                     * There happens to be an optimum number of digits that minimises the number of
+                     * patterns in the barcode when switching to code C.
+                     * This is as follows (from Wikipedia)
+                     * | Location of Digits | Number of consecutive digits |
+                     * |  beginning of data |              4+              |
+                     * |     end of data    |              4+              |
+                     * |   middle of data   |              6+              |
+                     * |     entire data    |  either 2 or 4+ (but not 3)  |
+                     *
+                     * The bottom case has already handled (USE_C128_C_FULL), as has the first case.
+                     * The middle two cases are handled in the above statement using C128_C_MIN_DGT_END
+                     * (4) and C128_C_MIN_DGT_MID (6).
+                     *
+                     * If this section is evaluated, a code transition pattern to code C (e.g.ACodeC)
+                     * is encoded, and the current character re-encoded.
+                     */
+
+                    if (A == code) {
+                        values[values_len]   = ACodeC;
+                        dest_pat[values_len] = C128_CODE[C128_A_VALUE(ACodeC)];
+                    } else if (B == code) {
+                        values[values_len]   = BCodeC;
+                        dest_pat[values_len] = C128_CODE[C128_B_VALUE(BCodeC)];
+                    } else {
+                        fprintf(stderr, "invalid code set '%d'", code);
+                        status = ERR_INVALID_CODE_SET;
+                        longjmp(env, status);
+                    }
+                    values_len++;
+                    code = C;
+                    i--; // Retry with code as C
+                    continue;
+                } else if (CODE_CHANGE_NEEDED(code, chr)) {
+                    // If an A<->B code change is necessary
+                    if (next < data_len &&
+                        ((A == code && IN_C128_B(next_chr)) || (B == code && IN_C128_A(next_chr)))) {
+                        /**
+                         * We check if the next character matches the alternative code set.
+                         * If it is in the new code set, encode an XcodeY pattern,
+                         * otherwise encode XshiftY (for one character).
+                         */
+                        if (A == code) {
+                            code                 = B;
+                            values[values_len]   = ACodeB;
+                            dest_pat[values_len] = C128_CODE[C128_A_VALUE(ACodeB)];
+                        } else {
+                            code                 = A;
+                            values[values_len]   = BCodeA;
+                            dest_pat[values_len] = C128_CODE[C128_B_VALUE(BCodeA)];
+                        }
+                    } else {
+                        if (A == code) {
+                            code                 = B;
+                            values[values_len]   = AShiftB;
+                            dest_pat[values_len] = C128_CODE[C128_A_VALUE(AShiftB)];
+                        } else {
+                            code                 = A;
+                            values[values_len]   = BShiftA;
+                            dest_pat[values_len] = C128_CODE[C128_B_VALUE(BShiftA)];
+                        }
+                    }
+                    values_len++;
+                    i--; // Retry with changed code
+                } else {
+                    // Handles the cases where the code does not change
+                    switch (code) {
+                        int val;
+                        case B:
+                            val                  = C128_B_VALUE(chr);
+                            values[values_len]   = val;
+                            dest_pat[values_len] = C128_CODE[val];
+                            break;
+                        case A:
+                            val                  = C128_A_VALUE((int)chr);
+                            values[values_len]   = val;
+                            dest_pat[values_len] = C128_CODE[C128_A_INVERSE[val]];
+                            break;
+                        default:
+                            fprintf(stderr, "invalid code set '%d'", code);
+                            status = ERR_INVALID_CODE_SET;
+                            longjmp(env, status);
+                    }
+                    values_len++;
+                }
             }
         }
+
+        /*
+         * The checksum is evaluated based on the start and all data patterns encoded so far. The
+         * pattern resulting from the checksum value is appended to the end of the barcode, and then the
+         * stop pattern is added, yielding a complete, valid Code 128 barcode.
+         */
+        int checksum;
+        status = c128_checksum(values, values_len, &checksum);
+
+        if (SUCCESS != status) {
+            longjmp(env, status);
+        }
+
+        dest_pat[values_len] = C128_CODE[checksum];
+        //
+        // switch (code) {
+        //     case A:  break;
+        //     case B: dest_pat[values_len] = C128_CODE[checksum]; break;
+        //     case C: dest_pat[values_len] = C128_CODE[checksum]; break;
+        //     default: fprintf(stderr, "invalid code set '%d'", code); return ERR_INVALID_CODE_SET;
+        // }
+
+        // Allow for the checksum and stop pattern in the pattern length
+        int pat_len = values_len + 2;
+
+        dest_pat[pat_len - 1] = STOPPT;
+
+        size_t total_size = sizeof *dest + dest_size + sizeof *data * data_len;
+
+        *dest = calloc(1, total_size);
+        VERIFY_NULL(dest, total_size);
+
+        (*dest)->textlen = data_len;
+        (*dest)->datalen = pat_len;
+        memcpy((*dest)->text, data, data_len);
+        memcpy((*dest)->data, dest_pat, dest_size);
     }
-
-    /*
-     * The checksum is evaluated based on the start and all data patterns encoded so far. The
-     * pattern resulting from the checksum value is appended to the end of the barcode, and then the
-     * stop pattern is added, yielding a complete, valid Code 128 barcode.
-     */
-    int checksum;
-    status = c128_checksum(values, values_len, &checksum);
-
-    if (SUCCESS != status) {
-        return status;
-    }
-
-    dest_pat[values_len] = C128_CODE[checksum];
-    //
-    // switch (code) {
-    //     case A:  break;
-    //     case B: dest_pat[values_len] = C128_CODE[checksum]; break;
-    //     case C: dest_pat[values_len] = C128_CODE[checksum]; break;
-    //     default: fprintf(stderr, "invalid code set '%d'", code); return ERR_INVALID_CODE_SET;
-    // }
-
-    // Allow for the checksum and stop pattern in the pattern length
-    int pat_len = values_len + 2;
-
-    dest_pat[pat_len - 1] = STOPPT;
-
-    size_t total_size = sizeof *dest + dest_size + sizeof *data * data_len;
-
-    *dest = calloc(1, total_size);
-    VERIFY_NULL(dest, total_size);
-
-    (*dest)->textlen = data_len;
-    (*dest)->datalen = pat_len;
-    memcpy((*dest)->text, data, data_len);
-    memcpy((*dest)->data, dest_pat, dest_size);
 
     free(values);
     free(dest_pat);
 
-    return SUCCESS;
+    return status;
 }
