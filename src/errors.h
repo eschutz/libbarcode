@@ -41,6 +41,7 @@
 #define ERR_ALREADY_INITIALISED 6
 #define ERR_NULL_PATTERN        7
 #define ERR_INVALID_LAYOUT      8
+#define BARCODE_MAX_ERR         ERR_INVALID_LAYOUT
 /*@}*/
 
 // clang-format on
