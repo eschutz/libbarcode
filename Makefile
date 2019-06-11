@@ -6,9 +6,10 @@ SDIR=src
 ODIR=build
 _OBJS=symb.o util.o graphic.o
 OBJS=$(patsubst %,$(ODIR)/%,$(_OBJS))
-_DEPS=symb.h util.h errors.h graphic.h barcode.h
-DEPS=$(patsubst %,$(SDIR)/%,$(_DEPS))
-CFLAGS=-Wall -Wextra -g
+INCLUDE_PATH=include
+_DEPS=barcode/symb.h barcode/util.h barcode/errors.h barcode/graphic.h barcode.h
+DEPS=$(patsubst %,$(INCLUDE_PATH)/%,$(_DEPS))
+CFLAGS=-Wall -Wextra -g -I$(INCLUDE_PATH)
 ifeq ($(OS),Windows_NT)
 	CC=bcc32x
 else

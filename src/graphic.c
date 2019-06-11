@@ -24,9 +24,9 @@
 
 #include <string.h>
 
-#include "errors.h"
-#include "graphic.h"
-#include "symb.h"
+#include "barcode/errors.h"
+#include "barcode/graphic.h"
+#include "barcode/symb.h"
 
 const PSProperties PS_DEFAULT_PROPS = {.units = PS_UNIT,
                                        // .p_width = A4_WIDTH,

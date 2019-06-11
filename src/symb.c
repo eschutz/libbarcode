@@ -29,9 +29,9 @@
 #include <string.h>
 #include <setjmp.h>
 
-#include "errors.h"
-#include "symb.h"
-#include "util.h"
+#include "barcode/errors.h"
+#include "barcode/symb.h"
+#include "barcode/util.h"
 
 const char ctrl_strrepr[32][C128_MAX_STRREPR_SIZE] = {
     "\\0", "^A",  "^B",  "^C", "^D", "^E",  "^F",  "\\a", "\\b", "\\t", "\\n",

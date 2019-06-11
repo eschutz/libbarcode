@@ -20,7 +20,7 @@
  *      @author Elijah Schutz
  *      @date 22/3/18
  */
-#include "symb.h"
-#include "graphic.h"
-#include "util.h"
-#include "errors.h"
+#include "barcode/errors.h"
+#include "barcode/graphic.h"
+#include "barcode/symb.h"
+#include "barcode/util.h"

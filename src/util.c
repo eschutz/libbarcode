@@ -27,8 +27,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "errors.h"
-#include "util.h"
+#include "barcode/errors.h"
+#include "barcode/util.h"
 
 bool isdigits(char *str, int len) {
     for (int i = 0; i < len; i++) {

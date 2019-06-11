@@ -19,9 +19,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "errors.h"
-#include "graphic.h"
-#include "symb.h"
+#include "barcode/errors.h"
+#include "barcode/graphic.h"
+#include "barcode/symb.h"
 
 #define STRINGS 18
 
