@@ -475,7 +475,7 @@ int c128_encode(uchar *data, int data_len, Code128 **dest) {
 
         dest_pat[pat_len - 1] = STOPPT;
 
-        size_t total_size = sizeof *dest + dest_size + sizeof *data * data_len;
+        size_t total_size = sizeof **dest + dest_size + sizeof *data * data_len;
 
         *dest = calloc(1, total_size);
         VERIFY_NULL(dest, total_size);
