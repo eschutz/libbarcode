@@ -58,6 +58,7 @@
 #define CAN 24
 #define EM  25
 #define SUB 26
+#define ESC 27
 #define FS  28
 #define GS  29
 #define RS  30
@@ -197,7 +198,7 @@ struct Code128_Barcode {
     int     datalen;
     int     textlen;
     uchar   text[C128_MAX_DATA_LEN];
-    pattern data[];
+    pattern *data;
 };
 
 enum Code128CodeSet { A, B, C, Invalid };

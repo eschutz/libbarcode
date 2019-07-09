@@ -71,7 +71,7 @@ const uchar C128_A[] = {
     'M',  'N',  'O',  'P', 'Q', 'R', 'S',   'T',   'U',     'V',    'W',    'X',   'Y',  'Z',  '[',
     '\\', ']',  '^',  '_', NUL, SOH, STX,   ETX,   EOT,     ENQ,    ACK,    '\a',  '\b', '\t', '\n',
     '\v', '\f', '\r', SO,  SI,  DLE, DC1,   DC2,   DC3,     DC4,    NAK,    SYN,   ETB,  CAN,  EM,
-    SUB,  '\e', FS,   GS,  RS,  US,  AFNC3, AFNC2, AShiftB, ACodeC, ACodeB, AFNC4, AFNC1};
+    SUB,  ESC,  FS,   GS,  RS,  US,  AFNC3, AFNC2, AShiftB, ACodeC, ACodeB, AFNC4, AFNC1};
 
 const int C128_A_INVERSE[] = {
     64, 65, 66, 67, 68, 69, 7,  71, 72, 73, 74, 75, 76, 77, 78, 79, 8,  81,  82, 83, 84,
@@ -110,7 +110,7 @@ int init_barcode(void) {
      * Null values should be checked for in practice.
      */
     for (int i = 0; i < C128_CODE_SIZE; i++) {
-        C128_CODE_INVERSE[C128_CODE[i]] = i;
+      C128_CODE_INVERSE[C128_CODE[i]] = i;
     }
     return SUCCESS;
 }
