@@ -475,10 +475,13 @@ int c128_encode(uchar *data, int data_len, Code128 **dest) {
 
         dest_pat[pat_len - 1] = STOPPT;
 
-        size_t total_size = sizeof **dest + dest_size + sizeof *data * data_len;
+        size_t total_size = sizeof **dest + sizeof *data * data_len + sizeof(pattern *);
 
         *dest = calloc(1, total_size);
         VERIFY_NULL(dest, total_size);
+
+        (*dest)->data = calloc(1, dest_size);
+        VERIFY_NULL((*dest)->data, dest_size);
 
         (*dest)->textlen = data_len;
         (*dest)->datalen = pat_len;

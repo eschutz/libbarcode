@@ -1,4 +1,5 @@
 setlocal EnableDelayedExpansion
+SET TARGET=X86
 SET INCLUDE_PATH=include
 SET CFLAGS=/I%INCLUDE_PATH%
 SET SDIR=src
@@ -13,4 +14,4 @@ for %%f in (symb util graphic) do (
   %CC% %CFLAGS% /c %SDIR%\%%f.c -Fo:%ODIR%\%%f.obj
 )
 
-link /dll /out:lib\libbarcode.dll %OBJS%
+lib /MACHINE:%TARGET% /out:lib\libbarcode.lib %OBJS%
