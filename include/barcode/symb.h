@@ -195,10 +195,10 @@ extern const char ctrl_strrepr[ASCII_NUM_CTRL][C128_MAX_STRREPR_SIZE];
  *      @see c128_strrepr
  */
 struct Code128_Barcode {
-    int     datalen;
-    int     textlen;
-    uchar   text[C128_MAX_DATA_LEN];
-    pattern *data;
+    int       datalen;
+    int       textlen;
+    uchar     text[C128_MAX_DATA_LEN];
+    pattern * data;
 };
 
 enum Code128CodeSet { A, B, C, Invalid };
@@ -294,7 +294,7 @@ int c128_c_digit(uchar, uchar, int *);
  *      @param len The length of the substring
  *      @return true if Code 128 should be used, false otherwise
  */
-bool use_c128_dgt(char *str, int idx, int len);
+bool use_c128_dgt(char * str, int idx, int len);
 
 /**
  *      @brief Calculates the Code 128 checksum of the supplied values.

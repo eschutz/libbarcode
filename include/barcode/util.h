@@ -48,4 +48,4 @@ bool isdigits(char *, int);
  *      @param len The length of the resulting substring
  *      @return A string of length len
  */
-char *slice(char *, int, int);
+char * slice(char *, int, int);

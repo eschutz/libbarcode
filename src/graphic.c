@@ -22,11 +22,12 @@
  *      @date 17/12/18
  */
 
-#include <string.h>
+#include "barcode/graphic.h"
 
 #include "barcode/errors.h"
-#include "barcode/graphic.h"
 #include "barcode/symb.h"
+
+#include <string.h>
 
 const PSProperties PS_DEFAULT_PROPS = {.units = PS_UNIT,
                                        // .p_width = A4_WIDTH,
@@ -52,27 +53,36 @@ size_t ps_bufsize(int rects) {
     return PS_CMD_BUFSIZE * rects + PS_TEXT_BUFSIZE + 1;
 }
 
-int svg_rect(int x, int y, int w, int h, char *colour, char dest[][SVG_RECT_BUFSIZE]) {
+int svg_rect(int x, int y, int w, int h, char * colour, char dest[][SVG_RECT_BUFSIZE]) {
     if (strlen(colour) > SVG_COLOUR_LEN) {
         fprintf(stderr, "colour code '%s' too long", colour);
         return ERR_ARGUMENT;
     }
 
-    snprintf(*dest, SVG_RECT_BUFSIZE,
-             "<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" fill=\"%s\"/>", x, y, w, h,
+    snprintf(*dest,
+             SVG_RECT_BUFSIZE,
+             "<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" fill=\"%s\"/>",
+             x,
+             y,
+             w,
+             h,
              colour);
     return SUCCESS;
 }
 
-int c128_text(char *text, int index, char dest[][SVG_TEXT_BUFSIZE]) {
-    snprintf(*dest, SVG_TEXT_BUFSIZE,
+int c128_text(char * text, int index, char dest[][SVG_TEXT_BUFSIZE]) {
+    snprintf(*dest,
+             SVG_TEXT_BUFSIZE,
              "<text x=\"%d\" y=\"%d\" text-anchor=\"middle\" font-family=\"Helvetica\" "
              "font-size=\"%d\" fill=\"black\">%s</text>",
-             index, SVG_LINE_HEIGHT, SVG_FONT_SIZE, text);
+             index,
+             SVG_LINE_HEIGHT,
+             SVG_FONT_SIZE,
+             text);
     return SUCCESS;
 }
 
-int c128_ps_text(char *text, int fsize, int index, char dest[][PS_TEXT_BUFSIZE]) {
+int c128_ps_text(char * text, int fsize, int index, char dest[][PS_TEXT_BUFSIZE]) {
     snprintf(*dest, PS_TEXT_BUFSIZE, PS_TEXT, fsize, text, index);
     return SUCCESS;
 }
@@ -107,7 +117,7 @@ int c128_ps_rect_white(int w, char dest[][PS_CMD_BUFSIZE]) {
  *              black and white bars are added to string, generating a barcode SVG from the internal
  *              representation.
  */
-int c128_pat2svg(pattern pat, int width, int *svg_x, char **dest) {
+int c128_pat2svg(pattern pat, int width, int * svg_x, char ** dest) {
     /**
      * A decrementing counter is used so iteration begins from the left. Using the example above,
      * <tt>i == 6</tt> on the first iteration, <tt>(p >> 6) & 1 == 1</tt>, yielding a black bar.
@@ -130,7 +140,7 @@ int c128_pat2svg(pattern pat, int width, int *svg_x, char **dest) {
  *      @detail See c128_pat2svg() for details on the algorithim used to print barcodes
  *      @see c128_pat2svg
  */
-int c128_pat2ps(pattern pat, int width, float *ps_x, char **dest, const PSProperties *props) {
+int c128_pat2ps(pattern pat, int width, float * ps_x, char ** dest, const PSProperties * props) {
     char bar[PS_CMD_BUFSIZE];
     memset(&bar, 0, PS_CMD_BUFSIZE);
     for (int i = width - 1; i >= 0; i--) {
@@ -147,7 +157,7 @@ int c128_pat2ps(pattern pat, int width, float *ps_x, char **dest, const PSProper
     return SUCCESS;
 }
 
-int c128_svg(Code128 *code, char **dest) {
+int c128_svg(Code128 * code, char ** dest) {
     /**
      * Code 128 barcodes have whitespace 'quiet zone' of a prescribed width preceding and following
      * the barcode, which is required for it to be properly readable.
@@ -196,7 +206,7 @@ int c128_svg(Code128 *code, char **dest) {
     svg_x += quiet_width;
 
     // Add the barcode text beneath the barcode at its centre
-    char *text;
+    char * text;
     c128_strrepr(code->text, code->textlen, &text);
 
     char svg_text[SVG_TEXT_BUFSIZE];
@@ -215,7 +225,7 @@ int c128_svg(Code128 *code, char **dest) {
  *      @detail This function is used internally, so you're probably looking for c128_ps_layout()
  *      @see c128_ps_layout()
  */
-int c128_ps_init(char **dest, int barcodes) {
+int c128_ps_init(char ** dest, int barcodes) {
     // + 1 for null terminator
     size_t dest_size = PS_HEADER_BUFSIZE +
                        ps_bufsize(C128_MAX_PATTERN_SIZE * C128_DATA_WIDTH + 2 * C128_QUIET_WIDTH +
@@ -232,10 +242,19 @@ int c128_ps_init(char **dest, int barcodes) {
  *      @detail This function is used internally, so you're probably looking for c128_ps_layout()
  *      @see c128_ps_layout()
  */
-int c128_ps_header(char **dest, const PSProperties *props) {
+int c128_ps_header(char ** dest, const PSProperties * props) {
     char header[PS_HEADER_BUFSIZE];
-    snprintf(header, PS_HEADER_BUFSIZE, PS_HEADER, props->units, props->lmargin, props->rmargin,
-             props->tmargin, props->bmargin, props->bar_width, props->bar_height, props->padding,
+    snprintf(header,
+             PS_HEADER_BUFSIZE,
+             PS_HEADER,
+             props->units,
+             props->lmargin,
+             props->rmargin,
+             props->tmargin,
+             props->bmargin,
+             props->bar_width,
+             props->bar_height,
+             props->padding,
              props->column_width);
 
     strncpy(*dest, header, PS_HEADER_BUFSIZE);
@@ -247,7 +266,7 @@ int c128_ps_header(char **dest, const PSProperties *props) {
  *      @detail This function is used internally, so you're probably looking for c128_ps_layout()
  *      @see c128_ps_layout()
  */
-int c128_ps_footer(char **dest) {
+int c128_ps_footer(char ** dest) {
     strncat(*dest, PS_FOOTER, PS_FOOTER_LEN);
     return SUCCESS;
 }
@@ -256,7 +275,7 @@ int c128_ps_footer(char **dest) {
  *      @detail This function is used internally, so you're probably looking for c128_ps_layout()
  *      @see c128_ps_layout()
  */
-int c128_ps(Code128 *code, char **dest, const PSProperties *props) {
+int c128_ps(Code128 * code, char ** dest, const PSProperties * props) {
     char quiet_zone[PS_CMD_BUFSIZE];
     c128_ps_rect_white(C128_QUIET_WIDTH, &quiet_zone);
     strncat(*dest, quiet_zone, PS_CMD_BUFSIZE);
@@ -290,7 +309,7 @@ int c128_ps(Code128 *code, char **dest, const PSProperties *props) {
     strncat(*dest, quiet_zone, PS_CMD_BUFSIZE);
     ps_x += quiet_width;
 
-    char *text;
+    char * text;
     c128_strrepr(code->text, code->textlen, &text);
 
     char ps_text[PS_TEXT_BUFSIZE];
@@ -303,10 +322,13 @@ int c128_ps(Code128 *code, char **dest, const PSProperties *props) {
     return SUCCESS;
 }
 
-int c128_ps_layout(Code128 **codes, int num_codes, char **dest, const PSProperties *props,
-                   Layout *layout) {
+int c128_ps_layout(Code128 **           codes,
+                   int                  num_codes,
+                   char **              dest,
+                   const PSProperties * props,
+                   Layout *             layout) {
     unsigned int max_codes = layout->cols * layout->rows;
-    if ((unsigned int)num_codes > max_codes || max_codes == 0) {
+    if ((unsigned int) num_codes > max_codes || max_codes == 0) {
         return ERR_INVALID_LAYOUT;
     }
 

@@ -22,15 +22,16 @@
  *      @date 12/12/18
  */
 
+#include "barcode/util.h"
+
+#include "barcode/errors.h"
+
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "barcode/errors.h"
-#include "barcode/util.h"
-
-bool isdigits(char *str, int len) {
+bool isdigits(char * str, int len) {
     for (int i = 0; i < len; i++) {
         if (!isdigit(str[i])) {
             return false;
@@ -43,8 +44,8 @@ bool isdigits(char *str, int len) {
  *      @detail Since some barcode symbologies allow for NUL characters, slice() really operates on
  *              char arrays, not strings. @c strncpy is thus forgone in favour of @c memcpy.
  */
-char *slice(char *str, int start, int len) {
-    char *res = malloc(len);
+char * slice(char * str, int start, int len) {
+    char * res = malloc(len);
     VERIFY_NULL(res, len);
 
     memcpy(res, str + start, len);

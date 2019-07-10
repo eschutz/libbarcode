@@ -30,6 +30,7 @@
 #define GRAPHIC_H
 
 #include "symb.h"
+
 #include <string.h>
 
 /**     @internal
