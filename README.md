@@ -18,11 +18,8 @@ long, versatile barcode printing services, and decoding services.
 - [ ] Read barcodes from an internal representation
 - [ ] Add Java bindings
 
-After completion, the aim is to produce a Windows desktop application, and a
-simple barcode scanning app for Android.
-
 ## Usage
-**Note:** Compiled with GNU Make using Clang on Mac OSX, and Borland C++ 5.5 on Windows.
+**Note:** Compiled with GNU Make using Clang on macOS and Linux, and MSVC on Windows.
 
 Include the `symb.h` and `graphic.h` headers and initialise with `init_barcode()` before doing any of the following.
 
@@ -42,4 +39,4 @@ The resulting SVG can then be written to file and viewed or used in some other w
 See `src/main.c` for a PostScript example.
 
 ## License
-This project is licensed under the GNU Lesser General Public License. See [LICENSE](../blob/master/LICENSE) and [COPYING.LESSER](../blob/master/COPYING.LESSER) for more information.
+This project is licensed under the Mozilla Public License Version 2.0. See [LICENSE](../blob/master/LICENSE) for more information.

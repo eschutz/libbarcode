@@ -7,10 +7,6 @@ old/*
 main
 main.exe
 main.tds
-build/*
-!build/.gitkeep
-doc/*
-!doc/.gitkeep
 cert
 release*
 lib/*
